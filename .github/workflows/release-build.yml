@@ -1,0 +1,77 @@
+name: Stable Release Build
+
+on:
+  release:
+    types: [published]
+
+env:
+  VIBEMUSIC_NIGHTLY_ENDPOINT: "https://github.com/justCallMeJeg/vibemusic/releases/download/nightly/latest.json"
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: version
+        run: |
+          $tag = "${{ github.event.release.tag_name }}"
+          $version = $tag -replace '^v', ''
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo Dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Verify version consistency
+        run: npm run verify:versions
+
+      - name: Build and upload to release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.event.release.tag_name }}
+          releaseName: "Vibe Music v${{ steps.version.outputs.VERSION }}"
+          releaseBody: ${{ github.event.release.body }}
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          args: --target x86_64-pc-windows-msvc
+
+      - name: Update CHANGELOG.md in repo
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git fetch origin master
+          git checkout master
+          git cliff --output CHANGELOG.md
+          git add CHANGELOG.md
+          git commit -m "docs: update CHANGELOG for v${{ steps.version.outputs.VERSION }} [skip ci]" || echo "No changes"
+          git push origin master
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

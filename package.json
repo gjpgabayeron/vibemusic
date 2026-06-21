@@ -25,6 +25,10 @@
     "lint:css:fix": "stylelint \"src/**/*.css\" --fix",
     "prepare": "husky && husky install",
     "setup:ffmpeg": "node scripts/download-ffmpeg.mjs",
+    "version:bump": "node scripts/bump-version.mjs",
+    "verify:versions": "node scripts/verify-versions.mjs",
+    "changelog:preview": "npx --yes git-cliff --unreleased --strip header",
+    "changelog:full": "npx --yes git-cliff --output CHANGELOG.md",
     "cleanup": "powershell -ExecutionPolicy Bypass -File ./scripts/cleanup.ps1"
   },
   "lint-staged": {

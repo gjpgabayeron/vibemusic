@@ -6,6 +6,9 @@ on:
       - dev
   workflow_dispatch:
 
+env:
+  VIBEMUSIC_NIGHTLY_ENDPOINT: "https://github.com/justCallMeJeg/vibemusic/releases/download/nightly/latest.json"
+
 jobs:
   nightly:
     permissions:
@@ -80,6 +83,9 @@ jobs:
           Write-Host "Bumped version: $currentVersion -> $newVersion"
         shell: pwsh
 
+      - name: Verify version consistency
+        run: npm run verify:versions
+
       - name: Generate changelog (since last stable release)
         id: changelog
         uses: orhun/git-cliff-action@v4
@@ -153,6 +159,18 @@ jobs:
           "@
 
           gh release edit nightly --title "$title" --notes "$body"
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create versioned nightly tag
+        run: |
+          $nightlyTag = "v${{ steps.version.outputs.NEW_VERSION }}-nightly.$(Get-Date -Format 'yyyyMMdd')"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git tag -a "$nightlyTag" -m "Nightly build ${{ steps.version.outputs.NEW_VERSION }}"
+          git push origin "$nightlyTag"
+          Write-Host "Created versioned nightly tag: $nightlyTag"
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

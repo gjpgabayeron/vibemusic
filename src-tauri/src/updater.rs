@@ -40,7 +40,11 @@ impl Default for PendingUpdate {
 // --- Helper to build updater with channel ---
 fn get_endpoint_for_channel(channel: &str) -> Option<url::Url> {
     if channel == "dev" {
-        url::Url::parse("https://github.com/justCallMeJeg/vibemusic/releases/download/nightly/latest.json").ok()
+        // Compile-time override via VIBEMUSIC_NIGHTLY_ENDPOINT env var, set in CI.
+        // Falls back to the default if not set (e.g., local dev builds).
+        let url = option_env!("VIBEMUSIC_NIGHTLY_ENDPOINT")
+            .unwrap_or("https://github.com/justCallMeJeg/vibemusic/releases/download/nightly/latest.json");
+        url::Url::parse(url).ok()
     } else {
         None // Use default endpoint from config
     }
