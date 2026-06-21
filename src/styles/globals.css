@@ -202,3 +202,16 @@
 @utility animate-scroll-text {
   animation: scroll-text linear infinite;
 }
+
+@utility scroll-mask-x {
+  --scroll-mask-left: 1;
+  --scroll-mask-right: 0;
+
+  mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / var(--scroll-mask-left)) 0,
+    black 24px,
+    black calc(100% - 24px),
+    rgb(0 0 0 / var(--scroll-mask-right)) 100%
+  );
+}

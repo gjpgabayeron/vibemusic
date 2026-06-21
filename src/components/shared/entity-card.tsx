@@ -44,6 +44,7 @@ interface EntityCardProps
   subtitle?: string;
   tertiaryText?: string;
   artworkSrc?: string;
+  rank?: number;
   onPlay?: () => void;
   onClick?: () => void;
   /** Context menu actions */
@@ -61,6 +62,7 @@ export const EntityCard = memo(function EntityCard({
   tertiaryText,
   artworkSrc,
   variant,
+  rank,
   className,
   onPlay,
   onClick,
@@ -73,29 +75,39 @@ export const EntityCard = memo(function EntityCard({
       onClick={onClick}
       {...props}
     >
-      <div className={cn(imageVariants({ variant }))}>
-        <ArtworkImage
-          src={artworkSrc}
-          alt={title}
-          className="group-hover:scale-[1.02] transition-transform duration-300"
-        />
-        {onPlay && (
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
-            <button
-              className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:scale-105 transition-transform shadow-lg cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPlay();
-              }}
-            >
-              <Play fill="currentColor" className="ml-1" size={20} />
-            </button>
+      <div className={cn(imageVariants({ variant }), "overflow-visible")}>
+        <div className="relative w-full h-full rounded-[inherit] overflow-hidden">
+          <ArtworkImage
+            src={artworkSrc}
+            alt={title}
+            className="group-hover:scale-[1.02] transition-transform duration-300"
+          />
+          {onPlay && (
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+              <button
+                className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:scale-105 transition-transform shadow-lg cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPlay();
+                }}
+              >
+                <Play fill="currentColor" className="ml-1" size={20} />
+              </button>
+            </div>
+          )}
+        </div>
+        {rank && (
+          <div className="absolute -top-1 -left-1 bg-black/60 backdrop-blur-md text-white shadow-sm rounded-full w-6 h-6 flex items-center justify-center font-bold text-[10px] z-20 ring-1 ring-white/20">
+            {rank}
           </div>
         )}
       </div>
 
       <div
-        className={cn("min-w-0 flex-1", variant === "circle" && "text-center")}
+        className={cn(
+          "min-w-0 flex-1 w-full",
+          variant === "circle" && "text-center",
+        )}
       >
         <div className="font-bold text-sm truncate leading-tight">{title}</div>
         {subtitle && (

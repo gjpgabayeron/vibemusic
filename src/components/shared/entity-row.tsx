@@ -6,13 +6,13 @@ import { ScrollingText } from "@/components/shared/scrolling-text";
 import { Play, Pause } from "lucide-react";
 
 const rowVariants = cva(
-  "group flex items-center gap-3 rounded-md px-2 transition-colors cursor-default select-none relative",
+  "group flex items-center gap-3 rounded-md p-2 transition-colors cursor-default select-none relative",
   {
     variants: {
       variant: {
-        default: "h-14 hover:bg-accent/50",
-        compact: "h-10 hover:bg-accent/50",
-        detailed: "h-16 hover:bg-accent/50 p-2",
+        default: "hover:bg-accent/50",
+        compact: "hover:bg-accent/50",
+        detailed: "hover:bg-accent/50 p-2",
       },
       active: {
         true: "bg-accent/50 text-accent-foreground outline outline-1 outline-border",
@@ -40,6 +40,8 @@ interface EntityRowProps
   contextMenuWrapper?: React.ReactNode;
   showArtwork?: boolean;
   playing?: boolean;
+  artworkCircular?: boolean;
+  artworkFallback?: string;
 }
 
 export const EntityRow = memo(function EntityRow({
@@ -54,6 +56,8 @@ export const EntityRow = memo(function EntityRow({
   className,
   showArtwork = true,
   playing = false,
+  artworkCircular,
+  artworkFallback,
   contextMenuWrapper: _contextMenuWrapper, // Destructure to avoid passing to div
   ...props
 }: EntityRowProps) {
@@ -100,12 +104,16 @@ export const EntityRow = memo(function EntityRow({
       </div>
 
       {/* Artwork Section */}
-      {showArtwork && artworkSrc !== undefined && (
+      {showArtwork && (
         <div className="relative shrink-0">
           <ArtworkImage
             src={artworkSrc}
             alt={typeof title === "string" ? title : "Artwork"}
-            className="w-10 h-10 rounded shadow-sm object-cover bg-secondary"
+            fallback={artworkFallback}
+            className={cn(
+              "w-10 h-10 object-cover bg-secondary",
+              artworkCircular ? "rounded-full" : "rounded shadow-sm",
+            )}
           />
         </div>
       )}

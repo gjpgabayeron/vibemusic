@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { ScrollingText } from "@/components/shared/scrolling-text";
 import { ArtworkImage } from "@/components/shared/artwork-image";
+import artistPlaceholderArt from "@/assets/artist-placeholder-art.png";
 
 interface ArtistCardProps {
   artist: Artist;
@@ -84,6 +85,7 @@ const ArtistCard = memo(function ArtistCard({ artist }: ArtistCardProps) {
           <ArtworkImage
             src={artist.artwork_path || undefined}
             alt={artist.name}
+            fallback={artistPlaceholderArt}
             className="group-hover:scale-[1.02] transition-transform duration-300"
           />
           {/* Play overlay */}

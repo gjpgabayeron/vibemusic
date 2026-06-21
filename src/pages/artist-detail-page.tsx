@@ -13,15 +13,15 @@ import { logger } from "@/lib/logger";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   ArrowLeft,
-  Users,
   Shuffle,
   Play,
   ChevronLeft,
   ChevronRight,
+  User,
 } from "lucide-react";
 import { useAudioStore } from "@/stores/audio-store";
 import { Button } from "@/components/ui/button";
-import placeholderArt from "@/assets/placeholder-art.png";
+import artistPlaceholderArt from "@/assets/artist-placeholder-art.png";
 import { CompactPageHeader } from "@/components/shared/compact-page-header";
 import { TrackListRow } from "@/components/shared/item/track-list-row";
 import { VirtualizedList } from "@/components/shared/virtualized-list";
@@ -81,7 +81,7 @@ export default function ArtistDetailPage() {
       const albumTracks = await getAlbumTracks(albumId);
       if (albumTracks.length > 0) {
         const sorted = albumTracks.sort(
-          (a, b) => (a.track_number || 0) - (b.track_number || 0)
+          (a, b) => (a.track_number || 0) - (b.track_number || 0),
         );
         play(sorted[0], sorted);
       }
@@ -165,12 +165,12 @@ export default function ArtistDetailPage() {
                     alt={artist.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.currentTarget.src = placeholderArt;
+                      e.currentTarget.src = artistPlaceholderArt;
                     }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    <Users className="w-20 h-20" />
+                    <User className="w-20 h-20" />
                   </div>
                 )}
               </div>
@@ -237,7 +237,7 @@ export default function ArtistDetailPage() {
                   {albums.map((album) => (
                     <div
                       key={album.id}
-                      className="flex flex-col w-[160px] min-w-[160px] gap-2"
+                      className="flex flex-col w-40 min-w-40 gap-2"
                     >
                       <div
                         className="relative aspect-square w-full rounded-lg overflow-hidden group cursor-pointer shadow-md"
@@ -248,11 +248,11 @@ export default function ArtistDetailPage() {
                           src={
                             album.artwork_path
                               ? convertFileSrc(album.artwork_path)
-                              : placeholderArt
+                              : artistPlaceholderArt
                           }
                           alt={album.title}
                           onError={(e) => {
-                            e.currentTarget.src = placeholderArt;
+                            e.currentTarget.src = artistPlaceholderArt;
                           }}
                         />
                         {/* Hover Overlay */}
