@@ -48,6 +48,7 @@ Conventional commits enforced via commitlint (`@commitlint/config-conventional`)
 - **Window**: undecorated, 1280x720 min, starts hidden (`visible: false`), maximized by default, close-to-tray with confirmation dialog
 - **Security**: CSP restricts to `ipc:`, `asset:`, `http://ipc.localhost`; asset protocol scoped to `$APPDATA`, `$AUDIO`, `$HOME`, `$RESOURCE`
 - **`src-tauri/`** is excluded from ESLint (already in eslint ignores)
+- **npm ↔ Rust version lockstep**: npm Tauri packages use `~` (tilde) ranges to stay on the same `major.minor` as their Rust crate counterparts in `Cargo.lock`. When upgrading Tauri crates in `Cargo.toml`, update npm packages in `package.json` to match. Mismatches cause `tauri build` to fail with "Found version mismatched Tauri packages".
 
 ## Commands the app exposes (Tauri invoke)
 Audio: `audio_play`, `audio_pause`, `audio_resume`, `audio_stop`, `audio_seek`, `audio_set_volume`, `audio_get_state`, `audio_get_devices`, `audio_set_device`, `audio_set_crossfade`
