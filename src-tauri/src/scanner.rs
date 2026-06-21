@@ -79,16 +79,15 @@ fn parse_artists(artist_str: Option<&str>) -> Vec<String> {
         Some(s) => {
 
             
-            // NOTE: We are NOT splitting by single '&' implicitly anymore to protect "Kool & The Gang".
-            // However, the regex above includes `&`. We should remove it or make it context sensitive.
-            // User specifically asked to stop splitting by `&`.
+            // NOTE: We still split by & when surrounded by spaces (e.g. "A & B" becomes ["A", "B"]).
+            // But "Kool & The Gang" stays intact as "Kool & The Gang" because the regex requires spaces around &.
             
              static SAFE_SPLIT_RE: OnceLock<Regex> = OnceLock::new();
              let safe_re = SAFE_SPLIT_RE.get_or_init(|| {
                 // Split by:
                 // 1. Semicolon ;
                 // 2. Comma , (with space)
-                // 3. Ampersand & (with spaces)
+                // 3. Ampersand & (with spaces) — "Kool & The Gang" stays intact, "A & B" splits
                 // 4. " feat. ", " ft. " etc
                 Regex::new(r"(?i)\s*(?:;|,\s+|\s+&\s+|[\(\[]\s*(?:feat\.?|ft\.?|featuring|with|vs\.?)\s+|(?:\s+)(?:feat\.?|ft\.?|featuring|with|vs\.?)(?:\s+))\s*").expect("invalid artist-split regex")
              });

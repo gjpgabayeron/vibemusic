@@ -134,6 +134,7 @@ pub async fn get_lyrics(path: String) -> Result<LyricsData, String> {
 async fn fetch_from_lrclib(title: &str, artist: &str, album: &str, duration: u64) -> Result<LrcLibResponse, String> {
     let client = reqwest::Client::builder()
         .user_agent(format!("vibemusic/{} (https://github.com/justCallMeJeg/vibemusic)", env!("CARGO_PKG_VERSION")))
+        .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -150,6 +151,9 @@ async fn fetch_from_lrclib(title: &str, artist: &str, album: &str, duration: u64
         .await
         .map_err(|e| e.to_string())?;
 
+    if res.status().as_u16() == 404 {
+        return Err("No lyrics found".to_string());
+    }
     if !res.status().is_success() {
         return Err(format!("API Error: {}", res.status()));
     }

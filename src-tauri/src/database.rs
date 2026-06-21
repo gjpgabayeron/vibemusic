@@ -276,12 +276,47 @@ impl DbHelper {
         Ok(())
     }
 
-    pub fn _get_conn(&self) -> &Connection {
+    pub fn get_conn(&self) -> &Connection {
         &self.conn
     }
 
     pub fn get_conn_mut(&mut self) -> &mut Connection {
         &mut self.conn
+    }
+
+    /// Maps a SQL row into a LibraryTrack. Shared by all track-query methods.
+    fn row_to_library_track(row: &rusqlite::Row) -> Result<crate::library::LibraryTrack> {
+        let names_str: Option<String> = row.get(4)?;
+        let ids_str: Option<String> = row.get(5)?;
+
+        let artist_names = names_str
+            .as_deref()
+            .unwrap_or("")
+            .split("|||")
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .collect();
+
+        let artist_ids = ids_str
+            .as_deref()
+            .unwrap_or("")
+            .split("|||")
+            .filter_map(|s| s.parse::<i64>().ok())
+            .collect();
+
+        Ok(crate::library::LibraryTrack {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            artist: row.get(2)?,
+            artist_id: row.get(3)?,
+            artist_names,
+            artist_ids,
+            album: row.get(6)?,
+            album_id: row.get(7)?,
+            duration_ms: row.get(8)?,
+            file_path: row.get(9)?,
+            artwork_path: row.get(10)?,
+        })
     }
 
     pub fn get_all_track_paths(&self) -> Result<Vec<(i64, String)>> {
@@ -404,44 +439,8 @@ impl DbHelper {
             ORDER BY t.created_at DESC",
         )?;
 
-        let track_iter = stmt.query_map([], |row| {
-            let names_str: Option<String> = row.get(4)?;
-            let ids_str: Option<String> = row.get(5)?;
-
-            let artist_names = names_str
-                .as_deref()
-                .unwrap_or("")
-                .split("|||")
-                .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
-                .collect();
-
-            let artist_ids = ids_str
-                .as_deref()
-                .unwrap_or("")
-                .split("|||")
-                .filter_map(|s| s.parse::<i64>().ok())
-                .collect();
-
-            Ok(crate::library::LibraryTrack {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                artist: row.get(2)?,
-                artist_id: row.get(3)?,
-                artist_names,
-                artist_ids,
-                album: row.get(6)?,
-                album_id: row.get(7)?,
-                duration_ms: row.get(8)?,
-                file_path: row.get(9)?,
-                artwork_path: row.get(10)?,
-            })
-        })?;
-
-        let mut tracks = Vec::new();
-        for track in track_iter {
-            tracks.push(track?);
-        }
+        let tracks = stmt.query_map([], |row| Self::row_to_library_track(row))?
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(tracks)
     }
@@ -544,44 +543,8 @@ impl DbHelper {
             ORDER BY t.disc_number ASC, t.track_number ASC, t.title ASC",
         )?;
 
-        let track_iter = stmt.query_map(params![album_id], |row| {
-            let names_str: Option<String> = row.get(4)?;
-            let ids_str: Option<String> = row.get(5)?;
-
-            let artist_names = names_str
-                .as_deref()
-                .unwrap_or("")
-                .split("|||")
-                .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
-                .collect();
-
-            let artist_ids = ids_str
-                .as_deref()
-                .unwrap_or("")
-                .split("|||")
-                .filter_map(|s| s.parse::<i64>().ok())
-                .collect();
-
-            Ok(crate::library::LibraryTrack {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                artist: row.get(2)?,
-                artist_id: row.get(3)?,
-                artist_names,
-                artist_ids,
-                album: row.get(6)?,
-                album_id: row.get(7)?,
-                duration_ms: row.get(8)?,
-                file_path: row.get(9)?,
-                artwork_path: row.get(10)?,
-            })
-        })?;
-
-        let mut tracks = Vec::new();
-        for track in track_iter {
-            tracks.push(track?);
-        }
+        let tracks = stmt.query_map(params![album_id], |row| Self::row_to_library_track(row))?
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(tracks)
     }
@@ -692,44 +655,8 @@ impl DbHelper {
             ORDER BY pt.position ASC",
         )?;
 
-        let track_iter = stmt.query_map(params![playlist_id], |row| {
-            let names_str: Option<String> = row.get(4)?;
-            let ids_str: Option<String> = row.get(5)?;
-
-            let artist_names = names_str
-                .as_deref()
-                .unwrap_or("")
-                .split("|||")
-                .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
-                .collect();
-
-            let artist_ids = ids_str
-                .as_deref()
-                .unwrap_or("")
-                .split("|||")
-                .filter_map(|s| s.parse::<i64>().ok())
-                .collect();
-
-            Ok(crate::library::LibraryTrack {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                artist: row.get(2)?,
-                artist_id: row.get(3)?,
-                artist_names,
-                artist_ids,
-                album: row.get(6)?,
-                album_id: row.get(7)?,
-                duration_ms: row.get(8)?,
-                file_path: row.get(9)?,
-                artwork_path: row.get(10)?,
-            })
-        })?;
-
-        let mut tracks = Vec::new();
-        for track in track_iter {
-            tracks.push(track?);
-        }
+        let tracks = stmt.query_map(params![playlist_id], |row| Self::row_to_library_track(row))?
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(tracks)
     }
@@ -936,9 +863,10 @@ impl DbHelper {
         }
         Ok(tracks)
     }
-    pub fn search(&self, query: &str) -> Result<(Vec<crate::library::LibraryTrack>, Vec<crate::library::LibraryAlbum>, Vec<crate::playlists::Playlist>)> {
+    pub fn search(&self, query: &str) -> Result<crate::library::SearchResults> {
+        const SEARCH_LIMIT: i64 = 20;
         let pattern = format!("%{}%", query);
-        let limit = 20;
+        let limit = SEARCH_LIMIT;
 
         // Search Tracks
         let mut stmt = self.conn.prepare(
@@ -965,44 +893,8 @@ impl DbHelper {
             LIMIT ?",
         )?;
 
-        let track_iter = stmt.query_map(params![&pattern, &pattern, limit], |row| {
-             let names_str: Option<String> = row.get(4)?;
-            let ids_str: Option<String> = row.get(5)?;
-
-            let artist_names = names_str
-                .as_deref()
-                .unwrap_or("")
-                .split("|||")
-                .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
-                .collect();
-
-            let artist_ids = ids_str
-                .as_deref()
-                .unwrap_or("")
-                .split("|||")
-                .filter_map(|s| s.parse::<i64>().ok())
-                .collect();
-
-            Ok(crate::library::LibraryTrack {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                artist: row.get(2)?,
-                artist_id: row.get(3)?,
-                artist_names,
-                artist_ids,
-                album: row.get(6)?,
-                album_id: row.get(7)?,
-                duration_ms: row.get(8)?,
-                file_path: row.get(9)?,
-                artwork_path: row.get(10)?,
-            })
-        })?;
-
-        let mut tracks = Vec::new();
-        for track in track_iter {
-            tracks.push(track?);
-        }
+        let tracks: Vec<crate::library::LibraryTrack> = stmt.query_map(params![&pattern, &pattern, limit], |row| Self::row_to_library_track(row))?
+            .collect::<Result<Vec<_>, _>>()?;
 
         // Search Albums
         let mut stmt = self.conn.prepare(
@@ -1075,7 +967,7 @@ impl DbHelper {
             playlists.push(playlist?);
         }
 
-        Ok((tracks, albums, playlists))
+        Ok(crate::library::SearchResults { tracks, albums, playlists })
     }
 
     pub fn record_playback(&self, track_id: i64, duration_ms: i64) -> Result<()> {

@@ -123,7 +123,7 @@ pub async fn record_playback(
 pub async fn get_stats(app: AppHandle, time_range: Option<String>) -> Result<StatsData, String> {
     let db_path = get_library_db_path(&app)?;
     let db = DbHelper::new(&db_path).map_err(|e| e.to_string())?;
-    let conn = db._get_conn();
+    let conn = db.get_conn();
 
     // Calculate start timestamp
     let range = time_range.as_deref().unwrap_or("all");

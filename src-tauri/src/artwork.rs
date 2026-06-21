@@ -3,6 +3,7 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
+use log::warn;
 
 /// Extract and cache cover art from ID3 tags
 /// Returns the absolute path to the cached image
@@ -32,7 +33,7 @@ pub fn extract_and_cache_cover(
     // 4. Create cache directory if needed
     if !cache_dir.exists() {
         if let Err(e) = fs::create_dir_all(cache_dir) {
-            eprintln!("Failed to create cache dir: {}", e);
+            warn!("Failed to create cache dir: {}", e);
             return None;
         }
     }
@@ -41,13 +42,13 @@ pub fn extract_and_cache_cover(
     let img = match image::load_from_memory(data) {
         Ok(img) => img,
         Err(e) => {
-            eprintln!("Failed to decode image data (hash: {}): {}", hash, e);
+            warn!("Failed to decode image data (hash: {}): {}", hash, e);
             return None;
         }
     };
 
-    // Resize to max 500x500 to save space and load time
-    let resized = img.resize(500, 500, image::imageops::FilterType::Lanczos3);
+    const MAX_COVER_SIZE: u32 = 500;
+    let resized = img.resize(MAX_COVER_SIZE, MAX_COVER_SIZE, image::imageops::FilterType::Lanczos3);
 
     // 6. Save as optimized JPEG using Atomic Write (Write temp -> Rename)
     // unique temp name to avoid collisions between threads processing same image
@@ -63,12 +64,12 @@ pub fn extract_and_cache_cover(
     if let Ok(mut file) = fs::File::create(&temp_path) {
         // Write with 80% quality
         if let Err(e) = resized.write_to(&mut file, ImageFormat::Jpeg) {
-            eprintln!("Failed to write to temp file: {}", e);
+            warn!("Failed to write to temp file: {}", e);
             let _ = fs::remove_file(&temp_path);
             return None;
         }
     } else {
-        eprintln!("Failed to create temp file");
+        warn!("Failed to create temp file");
         return None;
     }
 
@@ -84,7 +85,7 @@ pub fn extract_and_cache_cover(
             if file_path.exists() {
                 Some(file_path.to_string_lossy().to_string())
             } else {
-                eprintln!("Failed to rename temp file to final path");
+                warn!("Failed to rename temp file to final path");
                 None
             }
         }

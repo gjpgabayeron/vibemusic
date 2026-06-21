@@ -163,7 +163,8 @@ pub fn probe_file(path: &str) -> Result<MediaMetadata, String> {
         .map_err(|e| format!("Failed to run ffprobe: {}", e))?;
 
     if !output.status.success() {
-        return Err("ffprobe execution failed".to_string());
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("ffprobe execution failed: {}", stderr));
     }
 
     let json_str = String::from_utf8_lossy(&output.stdout);

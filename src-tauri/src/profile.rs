@@ -16,25 +16,33 @@ pub fn set_active_profile(app: AppHandle, profile_id: Option<String>) {
 
 pub fn get_library_db_path(app: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-
-    // Default path
     let mut db_name = "library.db".to_string();
-
-    // Check state if available
     if let Some(state) = app.try_state::<ProfileState>() {
         let current = state.0.lock().expect("profile mutex poisoned");
         if let Some(id) = &*current {
             db_name = format!("library_{}.db", id);
-        } else {
-            log::info!("No active profile set in state. Using default library.db");
         }
-    } else {
-        log::warn!("ProfileState not found! Using default library.db");
     }
-
-    log::info!("Resolved DB path: {:?}", db_name);
-
     Ok(app_data_dir.join(db_name))
+}
+
+/// Opens the library database and calls the given function with a DbHelper reference.
+pub fn with_db<F, T>(app: &AppHandle, f: F) -> Result<T, String>
+where
+    F: FnOnce(&crate::database::DbHelper) -> Result<T, rusqlite::Error>,
+{
+    let db_path = get_library_db_path(app)?;
+    let db = crate::database::DbHelper::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    f(&db).map_err(|e| format!("Database operation failed: {}", e))
+}
+
+pub fn with_db_mut<F, T>(app: &AppHandle, f: F) -> Result<T, String>
+where
+    F: FnOnce(&mut crate::database::DbHelper) -> Result<T, rusqlite::Error>,
+{
+    let db_path = get_library_db_path(app)?;
+    let mut db = crate::database::DbHelper::new(&db_path).map_err(|e| format!("Failed to open database: {}", e))?;
+    f(&mut db).map_err(|e| format!("Database operation failed: {}", e))
 }
 
 /// Deletes all data associated with a profile (DB, settings, avatar).
@@ -99,7 +107,8 @@ pub fn upload_profile_avatar(
     let extension = source_path
         .extension()
         .and_then(|e| e.to_str())
-        .unwrap_or("jpg"); // Default to jpg if unknown, though we should validate
+        .filter(|e| ["jpg", "jpeg", "png", "webp"].contains(&e.to_lowercase().as_str()))
+        .unwrap_or("jpg");
 
     let target_filename = format!("{}.{}", profile_id, extension);
     let target_path = avatars_dir.join(&target_filename);
