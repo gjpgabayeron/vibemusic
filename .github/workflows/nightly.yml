@@ -203,7 +203,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $newAssets = @()
-          Get-ChildItem -Path artifacts -Recurse -File | ForEach-Object {
+          Get-ChildItem -Path artifacts -Recurse -File | Where-Object {
+            $_.Name -like 'vibemusic*' -or $_.Name -eq 'latest.json'
+          } | ForEach-Object {
             $newAssets += $_.Name
             Write-Host "Uploading: $($_.Name)"
             gh release upload nightly "$($_.FullName)" --clobber
@@ -248,14 +250,16 @@ jobs:
           $pubDate = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ss") + "Z"
 
           $patterns = @{
-            'windows-x86_64' = '_x64_en-US\.msi\.zip$'
-            'darwin-x86_64'  = '_x64\.dmg\.tar\.gz$'
-            'darwin-aarch64' = '_aarch64\.dmg\.tar\.gz$'
-            'linux-x86_64'   = '_amd64\.AppImage\.tar\.gz$'
+            'windows-x86_64' = '_x64_en-US\.msi(\.zip)?$'
+            'darwin-x86_64'  = '\.app\.tar\.gz$'
+            'darwin-aarch64' = '_aarch64\.dmg(\.tar\.gz)?$'
+            'linux-x86_64'   = '_amd64\.AppImage(\.tar\.gz)?$'
           }
 
           $platforms = @{}
-          Get-ChildItem -Path artifacts -Recurse -File | ForEach-Object {
+          Get-ChildItem -Path artifacts -Recurse -File | Where-Object {
+            $_.Name -like 'vibemusic*'
+          } | ForEach-Object {
             $filename = $_.Name
             foreach ($key in $patterns.Keys) {
               if ($filename -match $patterns[$key]) {
