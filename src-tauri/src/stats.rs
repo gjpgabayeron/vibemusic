@@ -31,6 +31,7 @@ pub struct HeatmapPoint {
     pub day: u8,
     pub hour: u8,
     pub intensity: u32,
+    pub normalized: f64,
 }
 
 #[derive(Serialize)]
@@ -139,6 +140,9 @@ pub async fn get_stats(app: AppHandle, time_range: Option<String>) -> Result<Sta
         "1y" => now - (365 * 24 * 60 * 60),
         _ => 0,
     };
+
+    // Number of days in the selected range (min 1 to avoid division by zero)
+    let days_in_range = ((now - start_timestamp).max(86400) / 86400).max(1) as f64;
 
     // 1. Calculate Top Tracks
     let mut stmt = conn.prepare(
@@ -305,10 +309,12 @@ pub async fn get_stats(app: AppHandle, time_range: Option<String>) -> Result<Sta
     ).map_err(|e| e.to_string())?;
 
     let heatmap_iter = stmt.query_map([start_timestamp], |row| {
+        let intensity: u32 = row.get::<usize, u32>(2)?;
         Ok(HeatmapPoint {
             day: row.get::<usize, u8>(0)?,
             hour: row.get::<usize, u8>(1)?,
-            intensity: row.get::<usize, u32>(2)?,
+            intensity,
+            normalized: intensity as f64 / days_in_range,
         })
     }).map_err(|e| e.to_string())?;
 

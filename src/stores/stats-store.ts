@@ -39,7 +39,8 @@ export interface TopGenre {
 export interface HeatmapPoint {
   day: number; // 0-6 (Sun-Sat)
   hour: number; // 0-23
-  intensity: number;
+  intensity: number; // Raw play count
+  normalized: number; // Plays per day (for cross-range comparison)
 }
 
 export interface TrendsData {
