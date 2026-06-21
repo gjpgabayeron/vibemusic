@@ -96,4 +96,4 @@ Pre-commit hooks automatically lint your code before each commit.
 
 ## License
 
-MIT
+GPL-3.0-only
