@@ -34,3 +34,42 @@ impl From<String> for AppError {
         AppError::Unknown(s)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app_error_database_display() {
+        let err = AppError::Database("connection failed".to_string());
+        assert_eq!(err.to_string(), "Database error: connection failed");
+    }
+
+    #[test]
+    fn test_app_error_audio_display() {
+        let err = AppError::Audio("device not found".to_string());
+        assert_eq!(err.to_string(), "Audio error: device not found");
+    }
+
+    #[test]
+    fn test_app_error_unknown_display() {
+        let err = AppError::Unknown("something went wrong".to_string());
+        assert_eq!(err.to_string(), "Unknown error: something went wrong");
+    }
+
+    #[test]
+    fn test_app_error_from_string() {
+        let err: AppError = "custom error".to_string().into();
+        match err {
+            AppError::Unknown(s) => assert_eq!(s, "custom error"),
+            _ => panic!("Expected Unknown variant"),
+        }
+    }
+
+    #[test]
+    fn test_app_error_serializes_to_string() {
+        let err = AppError::Audio("no output".to_string());
+        let serialized = serde_json::to_string(&err).unwrap();
+        assert_eq!(serialized, "\"Audio error: no output\"");
+    }
+}

@@ -187,3 +187,76 @@ fn parse_lrc(content: &str) -> Vec<LyricLine> {
     
     lines
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_lrc_empty() {
+        let result = parse_lrc("");
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_lrc_single_line() {
+        let result = parse_lrc("[01:23.45]Hello world");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].text, "Hello world");
+        assert_eq!(result[0].timestamp_ms, Some(83450));
+    }
+
+    #[test]
+    fn test_parse_lrc_two_digit_ms() {
+        let result = parse_lrc("[00:05.67]Test");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].timestamp_ms, Some(5670));
+    }
+
+    #[test]
+    fn test_parse_lrc_three_digit_ms() {
+        let result = parse_lrc("[00:05.678]Test");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].timestamp_ms, Some(5678));
+    }
+
+    #[test]
+    fn test_parse_lrc_multiple_lines() {
+        let content = "[00:01.00]Line 1\n[00:02.00]Line 2\n[00:03.50]Line 3";
+        let result = parse_lrc(content);
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0].text, "Line 1");
+        assert_eq!(result[1].text, "Line 2");
+        assert_eq!(result[2].text, "Line 3");
+    }
+
+    #[test]
+    fn test_parse_lrc_minutes_and_seconds() {
+        let result = parse_lrc("[02:15.30]Long song");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].timestamp_ms, Some(135300));
+    }
+
+    #[test]
+    fn test_parse_lrc_ignores_header_lines() {
+        let content = "[ti:Title]\n[ar:Artist]\n[00:01.00]Actual lyric";
+        let result = parse_lrc(content);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].text, "Actual lyric");
+    }
+
+    #[test]
+    fn test_parse_lrc_ignores_non_lrc_lines() {
+        let content = "This is not an LRC line\n[00:01.00]Lyric";
+        let result = parse_lrc(content);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].text, "Lyric");
+    }
+
+    #[test]
+    fn test_parse_lrc_trims_whitespace_from_text() {
+        let result = parse_lrc("[00:01.00]  Hello  ");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].text, "Hello");
+    }
+}
