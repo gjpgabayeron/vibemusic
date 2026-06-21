@@ -1,7 +1,7 @@
 {
   "name": "vibemusic",
   "private": true,
-  "version": "0.0.21",
+  "version": "0.0.22",
   "type": "module",
   "license": "GPL-3.0-only",
   "authors": [
@@ -24,7 +24,6 @@
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint:css:fix": "stylelint \"src/**/*.css\" --fix",
     "prepare": "husky && husky install",
-
     "version:bump": "node scripts/bump-version.mjs",
     "verify:versions": "node scripts/verify-versions.mjs",
     "changelog:preview": "npx --yes git-cliff --unreleased --strip header",
