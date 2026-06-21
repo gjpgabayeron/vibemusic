@@ -364,6 +364,7 @@ struct AudioWorker {
     // Buffers
     primary_buffer: Vec<f32>,
     secondary_buffer: Vec<f32>,
+    resample_buf: Vec<f32>,
 }
 
 impl AudioWorker {
@@ -408,6 +409,7 @@ impl AudioWorker {
             samples_played: 0,
             primary_buffer: vec![0.0f32; 8192],
             secondary_buffer: vec![0.0f32; 8192],
+            resample_buf: vec![0.0f32; 8192],
         }
     }
 
@@ -474,6 +476,7 @@ impl AudioWorker {
                         duration: self.crossfade_setting,
                     };
 
+                    self.resample_buf.resize(self.secondary_buffer.len() * 2, 0.0);
                     self.duration_ms = self.secondary_decoder.as_ref().map(|d| d.duration_ms()).unwrap_or(0);
                     self.device_sample_rate = self.secondary_decoder.as_ref().map(|d| d.sample_rate()).unwrap_or(44100);
                     self.device_channels = self.secondary_decoder.as_ref().map(|d| d.channels() as u16).unwrap_or(2);
@@ -515,11 +518,12 @@ impl AudioWorker {
             }
         };
 
+        let file_rate = decoder.sample_rate();
         self.duration_ms = decoder.duration_ms();
-        self.device_sample_rate = decoder.sample_rate();
         self.device_channels = decoder.channels() as u16;
         self.primary_buffer = buf;
-        self.recreate_cpal_stream(self.device_sample_rate, self.device_channels);
+        self.resample_buf.resize(self.primary_buffer.len() * 2, 0.0);
+        self.recreate_cpal_stream(file_rate, self.device_channels);
 
         info!("Playing track: {}", path);
         self.primary_decoder = Some(decoder);
@@ -578,10 +582,11 @@ impl AudioWorker {
             return;
         };
 
+        // Always use device default config; resample decoded audio to match in decode_and_push
         let config: StreamConfig = match device.default_output_config() {
             Ok(c) => c.into(),
             Err(e) => {
-                error!("Failed to get audio config: {}", e);
+                error!("Failed to get default audio config: {}", e);
                 self.app_handle.emit(EVENT_PLAYBACK_ERROR, format!("Audio device error: {}", e)).ok();
                 return;
             }
@@ -641,6 +646,34 @@ impl AudioWorker {
         }
         
         self._current_stream = Some(stream);
+    }
+
+    /// Linear interpolation resampler: converts audio from input_rate to output_rate
+    fn resample_audio(input: &[f32], input_rate: u32, output_rate: u32, channels: usize, output: &mut [f32]) -> usize {
+        if input_rate == output_rate || input_rate == 0 || output_rate == 0 {
+            let n = input.len().min(output.len());
+            output[..n].copy_from_slice(&input[..n]);
+            return n;
+        }
+
+        let ratio = input_rate as f64 / output_rate as f64;
+        let input_frames = input.len() / channels;
+        let output_frames = ((input_frames as f64) / ratio).ceil() as usize;
+        let output_frames = output_frames.min(output.len() / channels);
+
+        for of in 0..output_frames {
+            let src_pos = of as f64 * ratio;
+            let fi = src_pos as usize;
+            let frac = src_pos - fi as f64;
+
+            for ch in 0..channels {
+                let a = if fi < input_frames { input[fi * channels + ch] as f64 } else { 0.0 };
+                let b = if fi + 1 < input_frames { input[(fi + 1) * channels + ch] as f64 } else { a };
+                output[of * channels + ch] = (a * (1.0 - frac) + b * frac).clamp(-1.0, 1.0) as f32;
+            }
+        }
+
+        output_frames * channels
     }
 
     fn decode_and_push(&mut self) {
@@ -734,9 +767,17 @@ impl AudioWorker {
                             (p * (1.0 - crossfade_progress)) + (s * crossfade_progress);
                     }
 
-                    producer.push_slice(&primary_buffer[..mix_count]);
+                    let file_rate = self.primary_decoder.as_ref().map(|d| d.sample_rate()).unwrap_or(44100);
+                    let out_len = Self::resample_audio(
+                        &primary_buffer[..mix_count],
+                        file_rate,
+                        self.device_sample_rate,
+                        self.device_channels as usize,
+                        &mut self.resample_buf,
+                    );
+                    producer.push_slice(&self.resample_buf[..out_len]);
 
-                    self.samples_played += mix_count as u64;
+                    self.samples_played += out_len as u64;
                     let samples_per_ms =
                         (self.device_sample_rate as u64 * self.device_channels as u64) / 1000;
                     if samples_per_ms > 0 {
@@ -744,9 +785,17 @@ impl AudioWorker {
                     }
                 } else {
                     if primary_read > 0 {
-                        producer.push_slice(&primary_buffer[..primary_read]);
+                        let file_rate = self.primary_decoder.as_ref().map(|d| d.sample_rate()).unwrap_or(44100);
+                        let out_len = Self::resample_audio(
+                            &primary_buffer[..primary_read],
+                            file_rate,
+                            self.device_sample_rate,
+                            self.device_channels as usize,
+                            &mut self.resample_buf,
+                        );
+                        producer.push_slice(&self.resample_buf[..out_len]);
 
-                        self.samples_played += primary_read as u64;
+                        self.samples_played += out_len as u64;
                         let samples_per_ms =
                             (self.device_sample_rate as u64 * self.device_channels as u64) / 1000;
                         if samples_per_ms > 0 {
