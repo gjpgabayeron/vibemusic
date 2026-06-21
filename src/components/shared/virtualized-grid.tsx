@@ -90,6 +90,7 @@ export function VirtualizedGrid<T>({
   return (
     <div
       ref={parentRef}
+      role="list"
       className={`flex-1 overflow-y-auto px-2 scroll-mask-y custom-scrollbar ${className} ${
         items.length === 0 ? "flex flex-col" : ""
       }`}
@@ -106,7 +107,6 @@ export function VirtualizedGrid<T>({
             height: `${virtualizer.getTotalSize() + bottomPadding}px`,
             width: "100%",
             position: "relative",
-            transition: "height 300ms ease-in-out",
           }}
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
@@ -115,6 +115,7 @@ export function VirtualizedGrid<T>({
 
             return (
               <div
+                role="listitem"
                 key={virtualRow.index}
                 data-index={virtualRow.index}
                 ref={virtualizer.measureElement}

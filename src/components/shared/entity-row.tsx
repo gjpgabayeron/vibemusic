@@ -72,10 +72,10 @@ export const EntityRow = memo(function EntityRow({
         {!active ? (
           <>
             {/* Default State: Show Leading/Index (Hidden on Hover) */}
-            <span className="group-hover:hidden">{leading || index}</span>
+            <span className="group-hover:hidden">{leading ?? (index ?? null)}</span>
 
             {/* Hover State: Show Play */}
-            <span className="hidden group-hover:block text-foreground">
+            <span aria-label="Play" className="hidden group-hover:block text-foreground">
               <Play size={16} fill="currentColor" />
             </span>
           </>
@@ -92,7 +92,7 @@ export const EntityRow = memo(function EntityRow({
             </span>
 
             {/* Active Hover: Pause (if playing) or Play (if paused/inactive) */}
-            <span className="hidden group-hover:block text-foreground">
+            <span aria-label={active && playing ? "Pause" : "Play"} className="hidden group-hover:block text-foreground">
               {active && playing ? (
                 <Pause size={16} fill="currentColor" />
               ) : (

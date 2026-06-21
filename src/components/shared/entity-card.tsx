@@ -85,6 +85,7 @@ export const EntityCard = memo(function EntityCard({
           {onPlay && (
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
               <button
+                aria-label="Play"
                 className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:scale-105 transition-transform shadow-lg cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -96,7 +97,7 @@ export const EntityCard = memo(function EntityCard({
             </div>
           )}
         </div>
-        {rank && (
+        {rank !== undefined && (
           <div className="absolute -top-1 -left-1 bg-black/60 backdrop-blur-md text-white shadow-sm rounded-full w-6 h-6 flex items-center justify-center font-bold text-[10px] z-20 ring-1 ring-white/20">
             {rank}
           </div>

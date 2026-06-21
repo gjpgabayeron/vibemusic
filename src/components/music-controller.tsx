@@ -248,6 +248,7 @@ export default function MusicControler() {
             {formatDuration(sliderValue[0])}
           </p>
           <Slider
+            aria-label="Seek position"
             value={sliderValue}
             max={duration || 100}
             step={100}
@@ -278,6 +279,7 @@ export default function MusicControler() {
             <TooltipContent>{volume === 0 ? "Unmute" : "Mute"}</TooltipContent>
           </Tooltip>
           <Slider
+            aria-label="Volume"
             value={[volume]}
             max={1}
             step={0.01}

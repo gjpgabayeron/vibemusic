@@ -170,6 +170,10 @@ export function PlaylistEditDialog({
             {/* Image Preview / Selection */}
             <div className="relative group">
               <div
+                role="button"
+                tabIndex={0}
+                aria-label="Select playlist cover image"
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSelectImage(); }}
                 className="w-40 h-40 rounded-lg bg-card flex flex-col items-center justify-center cursor-pointer overflow-hidden border border-dashed border-border hover:border-foreground/50 transition-colors"
                 onClick={handleSelectImage}
               >

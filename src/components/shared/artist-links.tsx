@@ -30,6 +30,9 @@ export function ArtistLinks({
         {names.map((name, index) => (
           <span key={ids[index]}>
             <span
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleArtistClick(e as unknown as React.MouseEvent, ids[index]); }}
               onClick={(e) => handleArtistClick(e, ids[index])}
               className="hover:underline cursor-pointer hover:text-white transition-colors"
             >
@@ -46,6 +49,9 @@ export function ArtistLinks({
   if (fallbackName) {
     return (
       <span
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && fallbackId) handleArtistClick(e as unknown as React.MouseEvent, fallbackId); }}
         className={cn(
           "truncate hover:underline cursor-pointer hover:text-white transition-colors",
           className

@@ -50,6 +50,7 @@ export function DetailHero({
         <div className="flex gap-3 mt-6 items-center">
           {onPlay && (
             <Button
+              aria-label="Play"
               variant="default"
               size="lg"
               onClick={onPlay}
@@ -61,6 +62,7 @@ export function DetailHero({
           )}
           {onShuffle && (
             <Button
+              aria-label="Shuffle"
               variant="outline"
               size="lg"
               onClick={onShuffle}

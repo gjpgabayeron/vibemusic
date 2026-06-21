@@ -122,11 +122,11 @@ export function VirtualizedSortableList<T>({
               strategy={verticalListSortingStrategy}
             >
               <div
+                role="list"
                 style={{
                   height: `${virtualizer.getTotalSize() + bottomPadding}px`,
                   width: "100%",
                   position: "relative",
-                  transition: "height 300ms ease-in-out",
                 }}
               >
                 {virtualItems.map((virtualRow) => {
@@ -134,6 +134,7 @@ export function VirtualizedSortableList<T>({
                   // We must ensure the item rendered uses useSortable hook
                   return (
                     <div
+                      role="listitem"
                       key={getItemId(item)}
                       data-index={virtualRow.index}
                       ref={virtualizer.measureElement}

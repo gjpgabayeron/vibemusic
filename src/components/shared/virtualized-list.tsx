@@ -67,6 +67,7 @@ export function VirtualizedList<T>({
     <div
       ref={parentRef}
       onScroll={onScroll}
+      role="list"
       className={`flex-1 overflow-y-auto ${className} scroll-mask-y custom-scrollbar`}
     >
       <div
@@ -90,6 +91,7 @@ export function VirtualizedList<T>({
 
               return (
                 <div
+                  role="listitem"
                   key={virtualRow.index}
                   data-index={virtualRow.index}
                   ref={virtualizer.measureElement}

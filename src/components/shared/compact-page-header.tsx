@@ -29,11 +29,12 @@ export const CompactPageHeader = memo(
           style={style}
         >
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={onBack}>
+            <Button aria-label="Back" variant="ghost" size="icon" onClick={onBack}>
               <ChevronLeft size={20} />
             </Button>
             {onPlay && (
               <Button
+                aria-label="Play"
                 size="icon"
                 className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-8 w-8"
                 onClick={onPlay}

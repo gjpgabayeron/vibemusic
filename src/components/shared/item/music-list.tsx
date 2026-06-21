@@ -115,7 +115,7 @@ const MusicListItem = memo(function MusicListItem({
                   onError={(e) => {
                     e.currentTarget.src = placeholderArt;
                   }}
-                  alt="Album Art"
+                  alt={track.title}
                 />
                 {/* Overlay: Visible if playing, paused (current), or on hover */}
                 <div

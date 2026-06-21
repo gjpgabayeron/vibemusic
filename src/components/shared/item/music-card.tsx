@@ -56,7 +56,7 @@ function MusicCard({ track, context }: MusicCardProps) {
                   logger.error("Failed to load image", artworkSrc);
                   e.currentTarget.src = placeholderArt;
                 }}
-                alt="Album Art"
+                alt={track.title}
               />
               {isPlaying && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-lg">

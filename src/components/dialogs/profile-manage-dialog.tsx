@@ -159,6 +159,10 @@ export function ProfileManageDialog({
         <div className="space-y-6 pt-4">
           <div className="flex items-center gap-4">
             <div
+              role="button"
+              tabIndex={0}
+              aria-label="Upload avatar"
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleAvatarUpload(); }}
               className={`relative w-20 h-20 rounded-md overflow-hidden flex items-center justify-center text-xl font-bold shrink-0 group cursor-pointer ${
                 !avatarPath && !tempAvatarPreview ? color : ""
               }`}
@@ -201,6 +205,8 @@ export function ProfileManageDialog({
               {AVATAR_COLORS.map((c) => (
                 <button
                   key={c}
+                  aria-label={`Color ${c.replace("bg-", "").replace("-500", "")}`}
+                  aria-pressed={color === c}
                   className={`w-8 h-8 rounded-full ${c} ${
                     color === c
                       ? "ring-2 ring-foreground ring-offset-2 ring-offset-popover"

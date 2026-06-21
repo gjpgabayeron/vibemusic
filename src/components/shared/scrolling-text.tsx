@@ -39,18 +39,18 @@ export function ScrollingText({
         className={cn(
           "inline-block transition-transform will-change-transform",
           isOverflowing &&
-            "hover:animate-scroll-text group-hover:animate-scroll-text group-data-[selected=true]:animate-scroll-text"
+            "motion-safe:hover:animate-scroll-text motion-safe:group-hover:animate-scroll-text motion-safe:group-data-[selected=true]:animate-scroll-text"
         )}
         style={
           isOverflowing
             ? {
-                animationDuration: `${children.length * 150}ms`,
+                animationDuration: `${Math.min(children.length * 150, 10000)}ms`,
               }
             : undefined
         }
       >
         <span className="inline-block pr-8">{children}</span>
-        {isOverflowing && <span className="inline-block pr-8">{children}</span>}
+        {isOverflowing && <span aria-hidden="true" className="inline-block pr-8">{children}</span>}
       </div>
     </div>
   );

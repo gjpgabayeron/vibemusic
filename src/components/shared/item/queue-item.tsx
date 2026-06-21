@@ -79,6 +79,7 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
         >
           {/* Drag Handle - Always visible now */}
           <div
+            aria-label="Drag to reorder"
             {...attributes}
             {...listeners}
             onClick={(e) => e.stopPropagation()}
