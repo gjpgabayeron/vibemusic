@@ -71,7 +71,6 @@ describe("audio-store", () => {
         title: track.title,
         artist: track.artist,
         album: track.album,
-        cover: track.artwork_path,
       });
     });
 
