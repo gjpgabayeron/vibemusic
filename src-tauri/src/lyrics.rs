@@ -1,3 +1,4 @@
+use log::warn;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::probe::Probe;
 use lofty::tag::{Accessor, ItemKey};
@@ -77,7 +78,7 @@ pub async fn get_lyrics(path: String) -> Result<LyricsData, String> {
              if let Some(synced) = response.synced_lyrics {
                  // Save to .lrc file
                 if let Err(e) = fs::write(&lrc_path, &synced) {
-                    log::warn!("Failed to save lrc file: {}", e);
+                    warn!("Failed to save lrc file: {}", e);
                 }
                  
                  return Ok(LyricsData {

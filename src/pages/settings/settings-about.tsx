@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useUpdateStore } from "@/stores/update-store";
 import { useAudioStore } from "@/stores/audio-store";
-import { Loader2, CheckCircle2, Download, Info, FileText } from "lucide-react";
+import { Loader2, CheckCircle2, Download, Info, FileText, ClipboardCopy } from "lucide-react";
 import { getVersion } from "@tauri-apps/api/app";
 import { useEffect, useState } from "react";
 import { UpdateDialog } from "@/components/dialogs/update-dialog";
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/tooltip";
 import { appLogDir } from "@tauri-apps/api/path";
 import { openPath } from "@tauri-apps/plugin-opener";
+import { toast } from "sonner";
+import { readTextFile } from "@tauri-apps/plugin-fs";
 import { logger } from "@/lib/logger";
 
 // Helper to format bytes
@@ -235,21 +237,41 @@ export function SettingsAbout() {
               View application logs for debugging
             </p>
           </div>
-          <Button
-            variant="outline"
-            className="bg-secondary/50 border-border hover:bg-accent text-foreground gap-2"
-            onClick={async () => {
-              try {
-                const logDir = await appLogDir();
-                await openPath(logDir);
-              } catch (error) {
-                logger.error("Failed to open logs folder", error);
-              }
-            }}
-          >
-            <FileText className="h-4 w-4" />
-            Open Logs
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="bg-secondary/50 border-border hover:bg-accent text-foreground gap-2"
+              onClick={async () => {
+                try {
+                  const logDir = await appLogDir();
+                  await openPath(logDir);
+                } catch (error) {
+                  logger.error("Failed to open logs folder", error);
+                }
+              }}
+            >
+              <FileText className="h-4 w-4" />
+              Open Logs
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-secondary/50 border-border hover:bg-accent text-foreground gap-2"
+              onClick={async () => {
+                try {
+                  const logDir = await appLogDir();
+                  const content = await readTextFile(`${logDir}/vibemusic.log`);
+                  await navigator.clipboard.writeText(content);
+                  toast.success("Logs copied to clipboard");
+                } catch (error) {
+                  logger.error("Failed to copy logs", error);
+                  toast.error("Failed to read log file");
+                }
+              }}
+            >
+              <ClipboardCopy className="h-4 w-4" />
+              Copy Logs
+            </Button>
+          </div>
         </div>
       </div>
       <UpdateDialog open={dialogOpen} onOpenChange={setDialogOpen} />

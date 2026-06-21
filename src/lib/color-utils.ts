@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 // Cache for already-computed colors
 const colorCache = new Map<string, string>();
 
@@ -41,13 +43,13 @@ export async function getDominantColor(imageUrl: string): Promise<string> {
         resolve(color);
       } catch (e) {
         // Can happen with CORS issues even with crossOrigin set
-        console.warn("Failed to extract color", e);
+        logger.warn("Failed to extract color", e);
         resolve("#000000");
       }
     };
 
     img.onerror = () => {
-      console.warn("Failed to load image for color extraction");
+      logger.warn("Failed to load image for color extraction");
       resolve("#000000");
     };
   });

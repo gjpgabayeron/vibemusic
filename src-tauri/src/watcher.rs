@@ -1,3 +1,4 @@
+use log::{error, info, warn};
 use notify::{Event, RecursiveMode, Watcher};
 use std::collections::HashSet;
 use std::path::Path;
@@ -71,16 +72,16 @@ pub fn watch_paths(app: AppHandle, folders: Vec<String>) -> Result<(), String> {
                      }
                 }
             }
-            Err(e) => log::error!("Watch error: {:?}", e),
+            Err(e) => error!("Watch error: {:?}", e),
         }
     }).map_err(|e| format!("Failed to create watcher: {}", e))?;
 
     // Add paths
     for folder in &folders {
         if let Err(e) = watcher.watch(Path::new(folder), RecursiveMode::Recursive) {
-            log::warn!("Failed to watch {}: {}", folder, e);
+            warn!("Failed to watch {}: {}", folder, e);
         } else {
-            log::info!("Watcher started for: {}", folder);
+            info!("Watcher started for: {}", folder);
         }
     }
 
@@ -117,7 +118,7 @@ pub fn watch_paths(app: AppHandle, folders: Vec<String>) -> Result<(), String> {
                 let elapsed = last_event.elapsed();
                 if elapsed >= debounce_time {
                     // Trigger Scan
-                    log::info!("File changes detected. Triggering auto-scan...");
+                    info!("File changes detected. Triggering auto-scan...");
                     // Call scanner
                     // We need to import scanner module
                     // Since we are in `src-tauri/src/watcher.rs`, `crate::scanner` should work.
@@ -125,8 +126,8 @@ pub fn watch_paths(app: AppHandle, folders: Vec<String>) -> Result<(), String> {
                     let folders = folders_clone.clone();
                     tauri::async_runtime::spawn(async move {
                         match crate::scanner::scan_music_library(app, folders).await {
-                            Ok(_) => log::info!("Auto-scan completed successfully"),
-                            Err(e) => log::error!("Auto-scan failed: {}", e),
+                            Ok(_) => info!("Auto-scan completed successfully"),
+                            Err(e) => error!("Auto-scan failed: {}", e),
                         }
                     });
                     dirty = false;

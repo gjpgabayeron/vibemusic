@@ -154,7 +154,7 @@ export default function PlaylistDetailPage() {
       await refreshPlaylists();
       goBack();
     } catch (e) {
-      console.error(e);
+      logger.error("Failed to delete playlist", e);
       toast.error("Failed to delete playlist");
     } finally {
       setIsDeleting(false);
@@ -172,7 +172,7 @@ export default function PlaylistDetailPage() {
       const newTracks = tracks.filter((t) => t.id !== trackId);
       setTracks(newTracks);
     } catch (e) {
-      console.error(e);
+      logger.error("Failed to remove track", e);
       toast.error("Failed to remove track");
     }
   };

@@ -1,3 +1,4 @@
+use log::info;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
@@ -8,7 +9,7 @@ pub struct ProfileState(pub Mutex<Option<String>>);
 /// Sets the active profile ID in the application state.
 #[tauri::command]
 pub fn set_active_profile(app: AppHandle, profile_id: Option<String>) {
-    log::info!("Setting active profile to: {:?}", profile_id);
+    info!("Setting active profile to: {:?}", profile_id);
     let state = app.state::<ProfileState>();
     let mut current = state.0.lock().expect("profile mutex poisoned");
     *current = profile_id;
@@ -72,7 +73,7 @@ pub fn delete_profile_data(app: AppHandle, profile_id: String) -> Result<(), Str
                  if path.is_file() {
                       if let Some(stem) = path.file_stem() {
                           if stem.to_string_lossy() == profile_id {
-                               log::info!("Deleting profile avatar: {:?}", path);
+                                info!("Deleting profile avatar: {:?}", path);
                                let _ = std::fs::remove_file(path);
                           }
                       }

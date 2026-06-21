@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SidePanelLayout } from "@/components/shared/side-panel-layout";
 import { ArtistLinks } from "@/components/shared/artist-links";
 import { formatDuration } from "@/lib/format";
+import { logger } from "@/lib/logger";
 
 export default function TrackDetailPanel() {
   const currentTrack = useCurrentTrack();
@@ -52,7 +53,7 @@ export default function TrackDetailPanel() {
             }
           })
           .catch((err) => {
-            console.error("Failed to probe file:", err);
+            logger.error("Failed to probe file:", err);
             if (isMounted) setMetadata(null);
           });
       }, 300); // 300ms debounce

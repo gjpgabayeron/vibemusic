@@ -50,6 +50,15 @@ Conventional commits enforced via commitlint (`@commitlint/config-conventional`)
 - **`src-tauri/`** is excluded from ESLint (already in eslint ignores)
 - **npm ↔ Rust version lockstep**: npm Tauri packages use `~` (tilde) ranges to stay on the same `major.minor` as their Rust crate counterparts in `Cargo.lock`. When upgrading Tauri crates in `Cargo.toml`, update npm packages in `package.json` to match. Mismatches cause `tauri build` to fail with "Found version mismatched Tauri packages".
 
+## Logging conventions
+
+- **Frontend**: Always use `logger.info`/`.warn`/`.error`/`.debug`/`.trace` from `@/lib/logger`. Never use raw `console.*` directly — they bypass the disk-persisted log files.
+- **Rust**: Always use `log::` facade (`info!`, `warn!`, `error!`). Prefer `use log::{info, warn, error}` imports over fully-qualified calls. Log level is `Debug` (set in `lib.rs` via `tauri_plugin_log`).
+- **Log format**: `[module] action: details` — e.g. `[audio] decode: Failed to decode file /foo.mp3`
+- **Log files**: Written to the app's log directory (visible in Settings → About → Troubleshooting). Rotated at 2MB, last 20 files kept.
+- **Error toasts**: `logger.error()` automatically shows a `sonner` toast with "Check logs for details". No need to add `toast.error()` alongside every error log.
+- **Error Boundary**: Uses `logger.error()` as well (fire-and-forget, no await needed in `componentDidCatch`).
+
 ## Commands the app exposes (Tauri invoke)
 Audio: `audio_play`, `audio_pause`, `audio_resume`, `audio_stop`, `audio_seek`, `audio_set_volume`, `audio_get_state`, `audio_get_devices`, `audio_set_device`, `audio_set_crossfade`
 Library: `get_all_tracks`, `get_all_albums`, `get_album_by_id`, `get_album_tracks`, `get_all_artists`, `get_artist_by_id`, `get_artist_albums`, `get_artist_tracks`, `search`, `delete_track`, `remove_location`
