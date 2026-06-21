@@ -107,7 +107,7 @@ jobs:
 
       - name: Build Nightly
         id: build
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -124,7 +124,7 @@ jobs:
             ${{ steps.changelog.outputs.content }}
           releaseDraft: false
           prerelease: true
-          uploadUpdaterJson: true
+          includeUpdaterJson: true
           args: ${{ matrix.args }}
 
       - name: Clean old nightly assets
