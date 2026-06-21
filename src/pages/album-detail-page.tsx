@@ -45,7 +45,7 @@ export default function AlbumDetailPage() {
         ]);
         setAlbum(albumData);
         // Sort by track number by default
-        const sortedTracks = tracksData.sort(
+        const sortedTracks = [...tracksData].sort(
           (a, b) => (a.track_number || 0) - (b.track_number || 0),
         );
         setTracks(sortedTracks);

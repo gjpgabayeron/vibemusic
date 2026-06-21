@@ -203,7 +203,11 @@ export default function App() {
 
     if (currentTrack?.artwork_path) {
       const src = convertFileSrc(currentTrack.artwork_path);
-      getDominantColor(src).then((color) => setGradientColor(color));
+      let cancelled = false;
+      getDominantColor(src).then((color) => {
+        if (!cancelled) setGradientColor(color);
+      });
+      return () => { cancelled = true; };
     } else {
       setGradientColor("transparent");
     }

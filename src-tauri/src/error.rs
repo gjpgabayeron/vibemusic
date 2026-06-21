@@ -4,16 +4,10 @@ use thiserror::Error;
 /// Application-wide error type.
 #[derive(Error, Debug)]
 pub enum AppError {
-    #[error("Database error: {0}")]
-    #[allow(dead_code)]
-    Database(String), // We convert sql error to string to avoid complex serialization traits
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Audio error: {0}")]
     Audio(String),
-    #[error("Media Control error: {0}")]
-    #[allow(dead_code)]
-    MediaControl(String),
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
@@ -38,12 +32,6 @@ impl From<String> for AppError {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_app_error_database_display() {
-        let err = AppError::Database("connection failed".to_string());
-        assert_eq!(err.to_string(), "Database error: connection failed");
-    }
 
     #[test]
     fn test_app_error_audio_display() {

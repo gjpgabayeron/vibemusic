@@ -77,14 +77,14 @@ pub async fn check_update<R: Runtime>(
             };
             
             // Store the update for later download
-            *pending_update.update.lock().unwrap() = Some(update);
-            *pending_update.bytes.lock().unwrap() = None;
-            
+            *pending_update.update.lock().expect("updater mutex poisoned") = Some(update);
+            *pending_update.bytes.lock().expect("updater mutex poisoned") = None;
+
             Ok(Some(metadata))
         }
         Ok(None) => {
-            *pending_update.update.lock().unwrap() = None;
-            *pending_update.bytes.lock().unwrap() = None;
+            *pending_update.update.lock().expect("updater mutex poisoned") = None;
+            *pending_update.bytes.lock().expect("updater mutex poisoned") = None;
             Ok(None)
         }
         Err(e) => Err(e.to_string()),
@@ -98,7 +98,7 @@ pub async fn download_update<R: Runtime>(
     pending_update: State<'_, PendingUpdate>,
 ) -> Result<(), String> {
     let update = {
-        let guard = pending_update.update.lock().unwrap();
+        let guard = pending_update.update.lock().expect("updater mutex poisoned");
         guard.clone()
     };
     
@@ -124,7 +124,7 @@ pub async fn download_update<R: Runtime>(
     ).await.map_err(|e| e.to_string())?;
     
     // Store the bytes for later installation
-    *pending_update.bytes.lock().unwrap() = Some(bytes);
+    *pending_update.bytes.lock().expect("updater mutex poisoned") = Some(bytes);
     
     // Emit download complete event
     let _ = app.emit("update-download-complete", ());
@@ -137,8 +137,8 @@ pub async fn download_update<R: Runtime>(
 pub fn install_update(
     pending_update: State<'_, PendingUpdate>,
 ) -> Result<(), String> {
-    let update = pending_update.update.lock().unwrap().take();
-    let bytes = pending_update.bytes.lock().unwrap().take();
+    let update = pending_update.update.lock().expect("updater mutex poisoned").take();
+    let bytes = pending_update.bytes.lock().expect("updater mutex poisoned").take();
     
     let Some(update) = update else {
         return Err("No pending update to install".to_string());

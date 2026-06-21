@@ -19,6 +19,10 @@ export function SettingsAppearance() {
     setDynamicGradient,
     defaultPage,
     setDefaultPage,
+    miniPlayerStyle,
+    setMiniPlayerStyle,
+    miniPlayerPosition,
+    setMiniPlayerPosition,
   } = useSettingsStore();
 
   return (
@@ -95,19 +99,15 @@ export function SettingsAppearance() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-32 justify-between">
-                    <span className="capitalize">
-                      {useSettingsStore().miniPlayerStyle}
-                    </span>
+                    <span className="capitalize">{miniPlayerStyle}</span>
                     <ChevronDown className="w-4 h-4 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuRadioGroup
-                    value={useSettingsStore().miniPlayerStyle}
+                    value={miniPlayerStyle}
                     onValueChange={(v) =>
-                      useSettingsStore
-                        .getState()
-                        .setMiniPlayerStyle(v as "square" | "wide" | "bar")
+                      setMiniPlayerStyle(v as "square" | "wide" | "bar")
                     }
                   >
                     <DropdownMenuRadioItem value="square">
@@ -131,24 +131,22 @@ export function SettingsAppearance() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-32 justify-between">
                     <span className="capitalize">
-                      {useSettingsStore().miniPlayerPosition.replace("-", " ")}
+                      {miniPlayerPosition.replace("-", " ")}
                     </span>
                     <ChevronDown className="w-4 h-4 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuRadioGroup
-                    value={useSettingsStore().miniPlayerPosition}
+                    value={miniPlayerPosition}
                     onValueChange={(v) =>
-                      useSettingsStore
-                        .getState()
-                        .setMiniPlayerPosition(
-                          v as
-                            | "bottom-right"
-                            | "bottom-left"
-                            | "top-right"
-                            | "top-left"
-                        )
+                      setMiniPlayerPosition(
+                        v as
+                          | "bottom-right"
+                          | "bottom-left"
+                          | "top-right"
+                          | "top-left"
+                      )
                     }
                   >
                     <DropdownMenuRadioItem value="bottom-right">

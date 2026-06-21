@@ -76,9 +76,9 @@ pub async fn get_lyrics(path: String) -> Result<LyricsData, String> {
              // If we have synced lyrics, Save and Return!
              if let Some(synced) = response.synced_lyrics {
                  // Save to .lrc file
-                 if let Err(e) = fs::write(&lrc_path, &synced) {
-                     eprintln!("Failed to save lrc file: {}", e);
-                 }
+                if let Err(e) = fs::write(&lrc_path, &synced) {
+                    log::warn!("Failed to save lrc file: {}", e);
+                }
                  
                  return Ok(LyricsData {
                      lines: parse_lrc(&synced),
@@ -162,7 +162,7 @@ async fn fetch_from_lrclib(title: &str, artist: &str, album: &str, duration: u64
 
 fn parse_lrc(content: &str) -> Vec<LyricLine> {
     let mut lines = Vec::new();
-    let re = regex::Regex::new(r"^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)$").unwrap();
+    let re = regex::Regex::new(r"^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)$").expect("invalid LRC regex");
 
     for line in content.lines() {
         let line = line.trim();

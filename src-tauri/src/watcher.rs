@@ -121,10 +121,14 @@ pub fn watch_paths(app: AppHandle, folders: Vec<String>) -> Result<(), String> {
                     // Call scanner
                     // We need to import scanner module
                     // Since we are in `src-tauri/src/watcher.rs`, `crate::scanner` should work.
-                    match tauri::async_runtime::block_on(crate::scanner::scan_music_library(app_handle.clone(), folders_clone.clone())) {
-                        Ok(_) => log::info!("Auto-scan completed successfully"),
-                        Err(e) => log::error!("Auto-scan failed: {}", e),
-                    }
+                    let app = app_handle.clone();
+                    let folders = folders_clone.clone();
+                    tauri::async_runtime::spawn(async move {
+                        match crate::scanner::scan_music_library(app, folders).await {
+                            Ok(_) => log::info!("Auto-scan completed successfully"),
+                            Err(e) => log::error!("Auto-scan failed: {}", e),
+                        }
+                    });
                     dirty = false;
                     // Drain unexpected events during scan?
                 } else {

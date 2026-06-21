@@ -43,7 +43,7 @@ export function TrackSelectDialog({
       getTracks()
         .then((data) => {
           // Sort by artist, then title
-          const sorted = data.sort((a, b) => {
+          const sorted = [...data].sort((a, b) => {
             const artistA = a.artist || "";
             const artistB = b.artist || "";
             return (

@@ -82,7 +82,6 @@ fn parse_artists(artist_str: Option<&str>) -> Vec<String> {
             // NOTE: We are NOT splitting by single '&' implicitly anymore to protect "Kool & The Gang".
             // However, the regex above includes `&`. We should remove it or make it context sensitive.
             // User specifically asked to stop splitting by `&`.
-            // Updated Regex below:
             
              static SAFE_SPLIT_RE: OnceLock<Regex> = OnceLock::new();
              let safe_re = SAFE_SPLIT_RE.get_or_init(|| {
@@ -91,7 +90,7 @@ fn parse_artists(artist_str: Option<&str>) -> Vec<String> {
                 // 2. Comma , (with space)
                 // 3. Ampersand & (with spaces)
                 // 4. " feat. ", " ft. " etc
-                Regex::new(r"(?i)\s*(?:;|,\s+|\s+&\s+|[\(\[]\s*(?:feat\.?|ft\.?|featuring|with|vs\.?)\s+|(?:\s+)(?:feat\.?|ft\.?|featuring|with|vs\.?)(?:\s+))\s*").unwrap()
+                Regex::new(r"(?i)\s*(?:;|,\s+|\s+&\s+|[\(\[]\s*(?:feat\.?|ft\.?|featuring|with|vs\.?)\s+|(?:\s+)(?:feat\.?|ft\.?|featuring|with|vs\.?)(?:\s+))\s*").expect("invalid artist-split regex")
              });
 
             let mut artists = Vec::new();
@@ -118,7 +117,7 @@ fn extract_features_from_title(title: &str) -> (String, Vec<String>) {
      static FEAT_RE: OnceLock<Regex> = OnceLock::new();
      let re = FEAT_RE.get_or_init(|| {
         // Matches " (feat. Artist)" or " [ft. Artist]" at the end of string
-        Regex::new(r"(?i)\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring|with|vs\.?)\s+(.+?)[\)\]]?\s*$").unwrap()
+        Regex::new(r"(?i)\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring|with|vs\.?)\s+(.+?)[\)\]]?\s*$").expect("invalid feature regex")
      });
 
     if let Some(caps) = re.captures(title) {
@@ -564,7 +563,7 @@ pub async fn scan_music_library(app: AppHandle, folders: Vec<String>) -> Result<
 
     let (success_count, error_count) = match db_thread.join() {
         Ok(res) => res?,
-        Err(_) => return Err("Database thread panicked".to_string()),
+        Err(e) => return Err(format!("Database thread panicked: {:?}", e)),
     };
 
     let _ = app.emit(

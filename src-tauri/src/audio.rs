@@ -848,7 +848,7 @@ impl AudioWorker {
 }
 
 pub struct AudioState(pub Arc<AudioEngine>);
-pub fn start_progress_tracking(_app: AppHandle, _engine: Arc<AudioEngine>) {}
+
 
 use crate::error::AppError;
 

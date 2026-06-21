@@ -10,7 +10,7 @@ pub struct ProfileState(pub Mutex<Option<String>>);
 pub fn set_active_profile(app: AppHandle, profile_id: Option<String>) {
     log::info!("Setting active profile to: {:?}", profile_id);
     let state = app.state::<ProfileState>();
-    let mut current = state.0.lock().unwrap();
+    let mut current = state.0.lock().expect("profile mutex poisoned");
     *current = profile_id;
 }
 
@@ -22,7 +22,7 @@ pub fn get_library_db_path(app: &AppHandle) -> Result<PathBuf, String> {
 
     // Check state if available
     if let Some(state) = app.try_state::<ProfileState>() {
-        let current = state.0.lock().unwrap();
+        let current = state.0.lock().expect("profile mutex poisoned");
         if let Some(id) = &*current {
             db_name = format!("library_{}.db", id);
         } else {

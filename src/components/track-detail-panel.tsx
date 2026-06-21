@@ -28,7 +28,7 @@ export default function TrackDetailPanel() {
 
   useEffect(() => {
     let isMounted = true;
-    let debounceTimer: NodeJS.Timeout;
+    let debounceTimer: ReturnType<typeof setTimeout>;
 
     if (currentTrack && isOpen) {
       const path = currentTrack.file_path;

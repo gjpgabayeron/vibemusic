@@ -15,7 +15,7 @@ impl DbHelper {
         if let Some(parent) = path.parent() {
             if !parent.exists() {
                 std::fs::create_dir_all(parent)
-                    .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+                    .map_err(|e| rusqlite::Error::InvalidParameterName(format!("Failed to create DB dir: {}", e)))?;
             }
         }
         let conn = Connection::open(path)?;
@@ -1081,7 +1081,7 @@ impl DbHelper {
     pub fn record_playback(&self, track_id: i64, duration_ms: i64) -> Result<()> {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or(std::time::Duration::ZERO)
             .as_secs() as i64;
 
         self.conn.execute(

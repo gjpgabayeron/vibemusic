@@ -221,7 +221,6 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
         set({ libraryPaths: newPaths });
         const store = await getStore();
         await store.set("libraryPaths", newPaths);
-        await store.set("libraryPaths", newPaths);
         await store.save();
         invoke("watch_paths", { folders: newPaths }).catch((e) =>
           logger.error("Failed to watch paths", e)
@@ -547,8 +546,8 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
           });
         }
 
-        invoke("watch_paths", { folders: libraryPaths ?? [] }).catch(
-          console.error
+        invoke("watch_paths", { folders: libraryPaths ?? [] }).catch((e) =>
+          logger.error("Failed to watch paths on settings load", e)
         );
 
         get().refreshAudioDevices();

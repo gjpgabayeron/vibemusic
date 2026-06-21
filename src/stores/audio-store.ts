@@ -63,7 +63,7 @@ interface AudioActions {
   previous: () => Promise<void>;
   seek: (positionMs: number) => Promise<void>;
   setVolume: (volume: number) => Promise<void>;
-  toggleMute: () => void;
+  toggleMute: () => Promise<void>;
 
   // Queue Actions
   toggleQueue: () => void;

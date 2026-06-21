@@ -129,7 +129,7 @@ pub async fn get_stats(app: AppHandle, time_range: Option<String>) -> Result<Sta
     let range = time_range.as_deref().unwrap_or("all");
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or(std::time::Duration::ZERO)
         .as_secs() as i64;
 
     let start_timestamp = match range {
@@ -234,7 +234,7 @@ pub async fn get_stats(app: AppHandle, time_range: Option<String>) -> Result<Sta
     // 4. Activity History (Last 7 Days)
     let seven_days_ago = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or(std::time::Duration::ZERO)
         .as_secs() as i64 - (7 * 24 * 60 * 60);
 
     let mut stmt = conn.prepare(
