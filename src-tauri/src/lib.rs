@@ -4,7 +4,7 @@ mod artwork;
 mod audio;
 mod database;
 mod error;
-mod ffmpeg;
+mod metadata;
 mod library;
 mod playlists;
 mod profile;
@@ -52,7 +52,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(
@@ -174,12 +173,8 @@ pub fn run() {
             updater::download_and_install_update,
             // Watcher
             watcher::watch_paths,
-            // FFmpeg
-            ffmpeg::check_ffmpeg_status,
-            ffmpeg::download_ffmpeg,
-            ffmpeg::manual_set_ffmpeg_path,
-            ffmpeg::get_supported_ffmpeg_versions,
-            ffmpeg::probe_file,
+            // Metadata
+            metadata::probe_file,
             // Lyrics
             lyrics::get_lyrics,
             // Stats

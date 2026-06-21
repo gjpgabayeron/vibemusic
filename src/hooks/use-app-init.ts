@@ -1,30 +1,8 @@
 import { useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useSettingsStore, DownloadProgress } from "@/stores/settings-store";
 import { logger } from "@/lib/logger";
-
-/**
- * Custom hook that handles FFmpeg download progress listening.
- * Extracted from App.tsx to reduce component complexity.
- */
-export function useFFmpegProgressListener() {
-  const updateFFmpegDownloadProgress = useSettingsStore(
-    (s) => s.updateFFmpegDownloadProgress,
-  );
-
-  useEffect(() => {
-    const unlistenPromise = listen<DownloadProgress>(
-      "download-progress",
-      (event) => {
-        updateFFmpegDownloadProgress(event.payload);
-      },
-    );
-    return () => {
-      unlistenPromise.then((unlisten) => unlisten());
-    };
-  }, [updateFFmpegDownloadProgress]);
-}
+import { useSettingsStore } from "@/stores/settings-store";
 
 /**
  * Custom hook that handles the window close behavior (close-to-tray or quit dialog).

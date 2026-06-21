@@ -17,7 +17,6 @@ import { getDominantColor } from "./lib/color-utils";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
-  useFFmpegProgressListener,
   useWindowCloseHandler,
   useRefreshInterceptor,
   useScanProgressListener,
@@ -36,7 +35,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { useUpdateStore } from "./stores/update-store";
 
-import { FFmpegSetupDialog } from "./components/dialogs/ffmpeg-setup-dialog";
+
 import MiniPlayer from "./components/mini-player";
 
 import {
@@ -61,7 +60,7 @@ export default function App() {
   const [isQuitDialogOpen, setIsQuitDialogOpen] = useState(false);
   const [showProfileSwitchWarning, setShowProfileSwitchWarning] =
     useState(false);
-  const [isFFmpegReady, setIsFFmpegReady] = useState(false);
+
   const hasCheckedForUpdate = useRef(false);
   const hasDoneInitialScan = useRef(false); // Prevent scan on profile switch
   const stop = useAudioStore((s) => s.stop);
@@ -80,8 +79,7 @@ export default function App() {
   const initSystemThemeListener = useSettingsStore(
     (s) => s.initSystemThemeListener,
   );
-  // Global FFmpeg download listener - extracted to custom hook
-  useFFmpegProgressListener();
+
 
   // Intercept Refresh Keys - extracted to custom hook
   useRefreshInterceptor(isPlaying, () => setIsRefreshWarningOpen(true));
@@ -147,7 +145,6 @@ export default function App() {
       // Only run scanOnStartup on INITIAL app load, not when switching profiles
       if (
         !hasDoneInitialScan.current &&
-        isFFmpegReady &&
         settings.scanOnStartup &&
         settings.libraryPaths.length > 0
       ) {
@@ -185,7 +182,7 @@ export default function App() {
         });
       }
     }
-  }, [isSettingsLoading, activeProfileId, fetchLibrary, isFFmpegReady]);
+  }, [isSettingsLoading, activeProfileId, fetchLibrary]);
 
   // Handle Close-to-Tray and Quit Confirmation - extracted to custom hook
   useWindowCloseHandler(() => setIsQuitDialogOpen(true));
@@ -414,10 +411,6 @@ export default function App() {
         </>
       )}
       <GlobalSearch />
-
-      {!isFFmpegReady && (
-        <FFmpegSetupDialog onReady={() => setIsFFmpegReady(true)} />
-      )}
 
       {quitDialog}
       <ConfirmDialog

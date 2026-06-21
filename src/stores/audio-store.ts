@@ -100,7 +100,6 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         title: track.title,
         artist: track.artist,
         album: track.album,
-        cover: track.artwork_path,
       });
     } catch (e) {
       logger.error("Failed to play", e);

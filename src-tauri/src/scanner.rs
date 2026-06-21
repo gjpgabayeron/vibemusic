@@ -17,7 +17,7 @@ use log::{info, warn, error};
 
 /// Supported audio file extensions
 const AUDIO_EXTENSIONS: &[&str] = &[
-    "mp3", "flac", "wav", "ogg", "m4a", "aac", "aiff", "wv", "opus",
+    "mp3", "flac", "wav", "ogg", "m4a", "aac", "aiff",
 ];
 
 /// Metadata extracted from an audio file.

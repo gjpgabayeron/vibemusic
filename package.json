@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.21",
   "type": "module",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "authors": [
     {
       "name": "justCallMeJeg",
@@ -24,7 +24,7 @@
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint:css:fix": "stylelint \"src/**/*.css\" --fix",
     "prepare": "husky && husky install",
-    "setup:ffmpeg": "node scripts/download-ffmpeg.mjs",
+
     "version:bump": "node scripts/bump-version.mjs",
     "verify:versions": "node scripts/verify-versions.mjs",
     "changelog:preview": "npx --yes git-cliff --unreleased --strip header",

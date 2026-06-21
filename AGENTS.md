@@ -39,7 +39,7 @@ Conventional commits enforced via commitlint (`@commitlint/config-conventional`)
 - **Tauri commands** registered in `lib.rs` under a single `generate_handler![]` block
 - **Profile system**: each profile has its own SQLite DB; profile data is per-profile, settings (library paths, theme) are per-profile
 - **File watcher** (`watcher.rs`) monitors library directories for changes
-- **FFmpeg**: downloaded per-platform to `src-tauri/binaries/`; app checks presence at startup and shows setup dialog if missing
+- **Decoding**: symphonia v0.6 (pure Rust) replaces FFmpeg; no external binaries or downloads
 
 ## Key conventions
 - **`@/` path alias** — maps to `./src/` (vite + tsconfig)
