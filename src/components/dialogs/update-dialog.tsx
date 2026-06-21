@@ -49,9 +49,9 @@ export function UpdateDialog({
       footer={footer}
       contentClassName="max-w-2xl max-h-[80vh] flex flex-col"
     >
-      <div className="flex-1 overflow-y-auto my-4 p-4 rounded-md bg-card border border-border">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden my-4 p-4 rounded-md bg-card border border-border">
         <div
-          className="prose prose-invert prose-sm max-w-none
+          className="prose prose-invert prose-sm max-w-none break-words
             prose-headings:text-indigo-400 prose-headings:font-semibold prose-headings:border-b prose-headings:border-border prose-headings:pb-2 prose-headings:mb-3
             prose-h1:text-lg prose-h2:text-base prose-h3:text-sm
             prose-p:text-muted-foreground prose-p:leading-relaxed
