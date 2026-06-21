@@ -7,6 +7,7 @@ import {
 } from "@/stores/audio-store";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { getLyrics, LyricLine, LyricsData } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { Loader2, Music2 } from "lucide-react";
 
@@ -24,7 +25,7 @@ export default function LyricsPanel() {
   const [source, setSource] = useState<string>("");
 
   // Cache lyrics data
-  const lyricsCache = useMemo(() => new Map<string, LyricsData>(), []);
+  const lyricsCache = useRef(new Map<string, LyricsData>()).current;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLDivElement>(null);
@@ -58,7 +59,7 @@ export default function LyricsPanel() {
         lyricsCache.set(path, data);
       })
       .catch((err) => {
-        console.warn("Failed to fetch lyrics:", err);
+        logger.warn("Failed to fetch lyrics:", err);
         setError("No lyrics found");
       })
       .finally(() => {

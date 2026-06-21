@@ -53,6 +53,13 @@ export function ProfileManageDialog({
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
 
+  // Revoke tempAvatarPreview on unmount to avoid memory leak
+  useEffect(() => {
+    return () => {
+      if (tempAvatarPreview) URL.revokeObjectURL(tempAvatarPreview);
+    };
+  }, [tempAvatarPreview]);
+
   // Initialize form when opening/profile changes
   useEffect(() => {
     if (open) {
@@ -113,6 +120,8 @@ export function ProfileManageDialog({
     try {
       await onSave(name, color, avatarPath, avatarBytes);
       onOpenChange(false);
+    } catch (e) {
+      logger.error("Failed to save profile", e);
     } finally {
       setIsSaving(false);
     }

@@ -88,7 +88,10 @@ export function GlobalSearch() {
         .then((res) => {
           if (!cancelled) setResults(res);
         })
-        .catch((e) => logger.error("Search failed", e))
+        .catch((e) => {
+          logger.error("Search failed", e);
+          if (!cancelled) toast.error("Search failed");
+        })
         .finally(() => {
           if (!cancelled) setLoading(false);
         });

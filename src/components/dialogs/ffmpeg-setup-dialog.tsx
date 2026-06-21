@@ -20,6 +20,8 @@ interface DownloadProgress {
 }
 
 export function FFmpegSetupDialog({ onReady }: { onReady: () => void }) {
+  const [mounted, setMounted] = useState(true);
+  useEffect(() => () => setMounted(false), []);
   const [status, setStatus] = useState<
     "checking" | "missing" | "downloading" | "ready"
   >("checking");
@@ -45,6 +47,7 @@ export function FFmpegSetupDialog({ onReady }: { onReady: () => void }) {
   }, [checkStatus]);
 
   const handleDownload = async () => {
+    if (!mounted) return;
     setStatus("downloading");
     setError(null);
     setDownloadProgress(0);
@@ -52,6 +55,7 @@ export function FFmpegSetupDialog({ onReady }: { onReady: () => void }) {
     const unlisten = await listen<DownloadProgress>(
       "download-progress",
       (event) => {
+        if (!mounted) return;
         const { progress, total } = event.payload;
         if (total > 0) {
           setDownloadProgress((progress / total) * 100);
@@ -61,12 +65,16 @@ export function FFmpegSetupDialog({ onReady }: { onReady: () => void }) {
 
     try {
       await invoke("download_ffmpeg");
-      setStatus("ready");
-      setTimeout(onReady, 1000); // Brief delay to show completion
+      if (mounted) {
+        setStatus("ready");
+        setTimeout(() => { if (mounted) onReady(); }, 1000);
+      }
     } catch (e) {
       logger.error("Download failed", e);
-      setStatus("missing");
-      setError("Download failed. Please check your internet connection.");
+      if (mounted) {
+        setStatus("missing");
+        setError("Download failed. Please check your internet connection.");
+      }
     } finally {
       unlisten();
     }

@@ -46,17 +46,20 @@ export default function ArtistDetailPage() {
   useEffect(() => {
     if (detailView?.type === "artist" && detailView.id) {
       setIsLoading(true);
-      Promise.all([
+      (async () => {
+      // Use allSettled so one failure doesn't lose all data
+      const [artistResult, albumsResult, tracksResult] = await Promise.allSettled([
         getArtistById(detailView.id),
         getArtistAlbums(detailView.id),
         getArtistTracks(detailView.id),
-      ])
-        .then(([artistData, albumsData, tracksData]) => {
-          setArtist(artistData);
-          setAlbums(albumsData);
-          setTracks(tracksData);
-        })
-        .finally(() => setIsLoading(false));
+      ]);
+      if (artistResult.status === "fulfilled") setArtist(artistResult.value);
+      else logger.error("Failed to load artist", artistResult.reason);
+      if (albumsResult.status === "fulfilled") setAlbums(albumsResult.value);
+      else logger.error("Failed to load albums", albumsResult.reason);
+      if (tracksResult.status === "fulfilled") setTracks(tracksResult.value);
+      else logger.error("Failed to load tracks", tracksResult.reason);
+      })();
     }
   }, [detailView]);
 

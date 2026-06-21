@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import Cropper from "react-easy-crop";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { StandardDialog } from "@/components/shared/standard-dialog";
 
@@ -98,6 +99,7 @@ export function ImageCropDialog({
       }
     } catch (e) {
       logger.error("Failed to crop image", e);
+      toast.error("Failed to crop image. Please try again.");
     } finally {
       setIsProcessing(false);
     }

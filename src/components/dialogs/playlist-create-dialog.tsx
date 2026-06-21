@@ -22,12 +22,14 @@ export function PlaylistCreateDialog({
     if (!name.trim()) return;
 
     setIsCreating(true);
-    const success = await createPlaylist(name);
-    setIsCreating(false);
-
-    if (success) {
-      setName("");
-      onOpenChange(false);
+    try {
+      const success = await createPlaylist(name);
+      if (success) {
+        setName("");
+        onOpenChange(false);
+      }
+    } finally {
+      setIsCreating(false);
     }
   };
 

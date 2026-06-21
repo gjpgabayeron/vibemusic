@@ -144,8 +144,8 @@ export function SettingsAudio() {
     try {
       await downloadFFmpeg(selectedVersion);
       // Success toast is handled in the store
-    } catch {
-      // Error toast is handled in the store
+    } catch (e) {
+      logger.warn("FFmpeg download confirmation failed", e);
     }
   };
 
@@ -156,7 +156,7 @@ export function SettingsAudio() {
         filters: [
           {
             name: "FFmpeg Binary",
-            extensions: navigator.userAgent.includes("Windows") ? ["exe"] : [],
+            extensions: ["exe"],
           },
         ],
       });

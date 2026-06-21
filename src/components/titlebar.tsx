@@ -21,12 +21,15 @@ export function TitleBar() {
 
     checkMaximized();
 
-    const unlistenResize = appWindow.onResized(async () => {
-      checkMaximized();
-    });
-
+    const init = async () => {
+      const unlisten = await appWindow.onResized(async () => {
+        checkMaximized();
+      });
+      return unlisten;
+    };
+    const promise = init();
     return () => {
-      unlistenResize.then((f) => f());
+      promise.then((f) => f());
     };
   }, [appWindow]);
 

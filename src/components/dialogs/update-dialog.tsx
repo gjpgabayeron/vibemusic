@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useUpdateStore } from "@/stores/update-store";
 import { Download } from "lucide-react";
+import { logger } from "@/lib/logger";
 import ReactMarkdown from "react-markdown";
 import { StandardDialog } from "@/components/shared/standard-dialog";
 
@@ -16,7 +17,11 @@ export function UpdateDialog({
 
   const handleDownload = async () => {
     onOpenChange(false); // Close dialog immediately
-    await download(); // Start background download
+    try {
+      await download(); // Start background download
+    } catch (e) {
+      logger.error("Download failed", e);
+    }
   };
 
   const footer = (

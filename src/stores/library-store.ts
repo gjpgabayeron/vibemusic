@@ -183,10 +183,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   reorderPlaylist: async (id, newOrder) => {
     try {
       await reorderPlaylist(id, newOrder);
-      // No need to refresh global list for reordering tracks inside a playlist
     } catch (error) {
       logger.error("Failed to reorder playlist", error);
-      throw error;
     }
   },
 }));
