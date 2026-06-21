@@ -8,6 +8,7 @@ import { probeFile, MediaMetadata } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidePanelLayout } from "@/components/shared/side-panel-layout";
 import { ArtistLinks } from "@/components/shared/artist-links";
+import { formatDuration } from "@/lib/format";
 
 export default function TrackDetailPanel() {
   const currentTrack = useCurrentTrack();
@@ -79,12 +80,6 @@ export default function TrackDetailPanel() {
       </SidePanelLayout>
     );
   }
-
-  const formatDuration = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
 
   const formatYear = (dateStr?: string) => {
     if (!dateStr) return null;

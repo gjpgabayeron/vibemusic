@@ -13,6 +13,7 @@ import {
   ContextMenuTrigger,
 } from "../../ui/context-menu";
 import { logger } from "@/lib/logger";
+import { formatDuration } from "@/lib/format";
 
 import placeholderArt from "@/assets/placeholder-art.png";
 
@@ -32,12 +33,6 @@ function MusicCard({ track, context }: MusicCardProps) {
   const playNext = useAudioStore((s) => s.playNext);
 
   const isPlaying = currentTrack?.id === track.id && status === "playing";
-
-  const formatDuration = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
 
   const artworkSrc = track.artwork_path
     ? convertFileSrc(track.artwork_path)

@@ -17,6 +17,7 @@ import { TrackListRow } from "@/components/shared/item/track-list-row";
 import { VirtualizedList } from "@/components/shared/virtualized-list";
 import { DetailPageTemplate } from "@/components/shared/templates/detail-page-template";
 import { DetailHero } from "@/components/shared/detail-hero";
+import { formatDuration } from "@/lib/format";
 
 export default function AlbumDetailPage() {
   const detailView = useDetailView();
@@ -58,22 +59,6 @@ export default function AlbumDetailPage() {
 
     loadAlbumData();
   }, [albumId]);
-
-  const formatDuration = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, "0")}:${minutes
-        .toString()
-        .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-    }
-    return `${minutes.toString().padStart(2, "0")}:${seconds
-      .toString()
-      .padStart(2, "0")}`;
-  };
 
   const handlePlay = () => {
     if (tracks.length > 0) {

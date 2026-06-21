@@ -28,6 +28,7 @@ import { TrackSelectDialog } from "@/components/dialogs/track-select-dialog";
 import { VirtualizedSortableList } from "@/components/shared/virtualized-sortable-list";
 import { TrackListHeader } from "@/components/shared/track-list-header";
 import { CompactPageHeader } from "@/components/shared/compact-page-header";
+import { formatDuration } from "@/lib/format";
 
 interface SortableTrackItemProps {
   track: Track;
@@ -186,20 +187,6 @@ export default function PlaylistDetailPage() {
   }
 
   const totalDurationMs = tracks.reduce((acc, t) => acc + t.duration_ms, 0);
-
-  const formatDuration = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
-        .toString()
-        .padStart(2, "0")}`;
-    }
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollTop = e.currentTarget.scrollTop;

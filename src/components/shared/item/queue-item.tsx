@@ -2,6 +2,7 @@ import { Track } from "@/lib/api";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Play, Pause } from "lucide-react";
+import { formatDuration } from "@/lib/format";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -63,12 +64,6 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
     if (track.artist_id) {
       openArtistDetail(track.artist_id);
     }
-  };
-
-  const formatDuration = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   return (
