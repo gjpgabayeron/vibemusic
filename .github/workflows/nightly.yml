@@ -10,64 +10,33 @@ env:
   VIBEMUSIC_NIGHTLY_ENDPOINT: "https://github.com/justCallMeJeg/vibemusic/releases/download/nightly/latest.json"
 
 jobs:
-  nightly:
+  bump:
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: macos-latest
-            args: --target aarch64-apple-darwin
-          - platform: macos-latest
-            args: --target x86_64-apple-darwin
-          - platform: ubuntu-22.04
-            args: ""
-          - platform: windows-latest
-            args: ""
-
-    runs-on: ${{ matrix.platform }}
+    outputs:
+      NEW_VERSION: ${{ steps.version.outputs.NEW_VERSION }}
+      DISPLAY_VERSION: ${{ steps.version.outputs.DISPLAY_VERSION }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0 # Needed for git-cliff
+          fetch-depth: 0
 
-      - name: Install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+          cache: npm
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
-      - name: Cache Cargo Dependencies
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: "src-tauri -> target"
-
-      - name: Install frontend dependencies
-        run: npm install
+      - run: npm install
 
       - name: Bump patch version
         id: version
+        shell: pwsh
         run: |
-          # Read current version from package.json
           $pkg = Get-Content package.json | ConvertFrom-Json
           $currentVersion = $pkg.version
-
-          # Parse and increment patch version
           $parts = $currentVersion -split '\.'
           $major = [int]$parts[0]
           $minor = [int]$parts[1]
@@ -78,117 +47,231 @@ jobs:
           echo "NEW_VERSION=$newVersion" >> $env:GITHUB_OUTPUT
           echo "DISPLAY_VERSION=$newVersion-nightly" >> $env:GITHUB_OUTPUT
 
-          # Update package.json
           $pkg.version = $newVersion
           $pkg | ConvertTo-Json -Depth 10 | Set-Content package.json
 
-          # Update tauri.conf.json
           $tauriConf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
           $tauriConf.version = $newVersion
           $tauriConf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json
 
-          # Update Cargo.toml
           (Get-Content src-tauri/Cargo.toml) -replace '^version = ".*"', "version = `"$newVersion`"" | Set-Content src-tauri/Cargo.toml
 
           Write-Host "Bumped version: $currentVersion -> $newVersion"
-        shell: pwsh
 
-      - name: Verify version consistency
-        run: npm run verify:versions
+      - run: npm run verify:versions
 
-      - name: Generate changelog (since last stable release)
-        id: changelog
+      - name: Generate changelog
         uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
-          args: --unreleased --strip header
+          args: --unreleased --strip header --output changelog.md
         env:
           GITHUB_REPO: ${{ github.repository }}
 
-      - name: Build Nightly
-        id: build
-        uses: tauri-apps/tauri-action@v0
+      - name: Upload changelog
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: changelog.md
+
+      - name: Commit version bump
+        shell: pwsh
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
+          git commit -m "chore: bump version to ${{ steps.version.outputs.NEW_VERSION }} [skip ci]" || echo "No changes to commit"
+          git push origin dev
+
+      - name: Create versioned nightly tag
+        shell: pwsh
+        run: |
+          $nightlyTag = "v${{ steps.version.outputs.NEW_VERSION }}-nightly.$(Get-Date -Format 'yyyyMMdd')"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git tag -a "$nightlyTag" -m "Nightly build ${{ steps.version.outputs.NEW_VERSION }}"
+          git push origin "$nightlyTag"
+          Write-Host "Created versioned nightly tag: $nightlyTag"
+
+  build:
+    needs: bump
+    runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target aarch64-apple-darwin
+            artifact-name: macos-aarch64
+            bundle-path: src-tauri/target/aarch64-apple-darwin/release/bundle
+          - platform: macos-latest
+            args: --target x86_64-apple-darwin
+            artifact-name: macos-x86_64
+            bundle-path: src-tauri/target/x86_64-apple-darwin/release/bundle
+          - platform: ubuntu-22.04
+            args: ""
+            artifact-name: linux-x86_64
+            bundle-path: src-tauri/target/release/bundle
+          - platform: windows-latest
+            args: ""
+            artifact-name: windows-x86_64
+            bundle-path: src-tauri/target/release/bundle
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          ref: dev
+
+      - name: Install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm install
+
+      - name: Build Tauri app
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run tauri build -- ${{ matrix.args }}
+
+      - name: Upload bundle artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tagName: nightly
-          releaseName: "Vibe Music ${{ steps.version.outputs.DISPLAY_VERSION }}"
-          releaseBody: |
-            🌙 **Nightly Build** - Version `${{ steps.version.outputs.NEW_VERSION }}`
+          name: bundle-${{ matrix.artifact-name }}
+          path: ${{ matrix.bundle-path }}
+          if-no-files-found: error
 
-            > ⚠️ This is a rolling nightly release with the latest changes from the `dev` branch. Nightly builds may be unstable. For stable releases, switch to the **stable** update channel.
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
-            ### Changelog
-            ${{ steps.changelog.outputs.content }}
-          releaseDraft: false
-          prerelease: true
-          includeUpdaterJson: true
-          args: ${{ matrix.args }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bundle-*
+          merge-multiple: true
+          path: artifacts
 
-      - name: Clean old nightly assets
+      - uses: actions/download-artifact@v4
+        with:
+          name: changelog
+          path: artifacts
+
+      - name: Ensure nightly release exists
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get all assets from the nightly release except the ones we just uploaded
-          # Note: tauri-action also uploads latest.json but doesn't include it in artifactPaths
-          $newAssets = @("latest.json")
-          $artifactPaths = '${{ steps.build.outputs.artifactPaths }}'
-          if ($artifactPaths) {
-            $newAssets += ($artifactPaths | ConvertFrom-Json) | ForEach-Object { [System.IO.Path]::GetFileName($_) }
+          gh release create nightly --title "Vibe Music Nightly" --notes "" --prerelease 2>$null | Out-Null
+
+      - name: Upload artifacts to nightly release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $newAssets = @()
+          Get-ChildItem -Path artifacts -Recurse -File | ForEach-Object {
+            $newAssets += $_.Name
+            Write-Host "Uploading: $($_.Name)"
+            gh release upload nightly "$($_.FullName)" --clobber
           }
 
-          $allAssets = gh release view nightly --json assets --jq '.assets[].name' 2>$null
-          if ($LASTEXITCODE -eq 0 -and $allAssets) {
-            foreach ($asset in $allAssets) {
-              # Only delete old assets (not the ones we just uploaded)
+          $existingAssets = gh release view nightly --json assets --jq '.assets[].name' 2>$null
+          if ($existingAssets) {
+            foreach ($asset in $existingAssets) {
               if ($asset -notin $newAssets) {
-                Write-Host "Deleting old asset: $asset"
+                Write-Host "Deleting stale asset: $asset"
                 gh release delete-asset nightly $asset --yes
-              } else {
-                Write-Host "Keeping new asset: $asset"
               }
             }
-            Write-Host "Cleaned old nightly assets"
-          } else {
-            Write-Host "No existing nightly release or assets to clean"
           }
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update release metadata
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $title = "Vibe Music ${{ steps.version.outputs.DISPLAY_VERSION }}"
-          $body = @"
-          🌙 **Nightly Build** - Version ``${{ steps.version.outputs.NEW_VERSION }}``
+          cat > body.md << 'BODYEOF'
+          🌙 **Nightly Build** - Version ${{ needs.bump.outputs.NEW_VERSION }}
 
-          > ⚠️ This is a rolling nightly release with the latest changes from the ``dev`` branch. Nightly builds may be unstable. For stable releases, switch to the **stable** update channel.
+          > ⚠️ This is a rolling nightly release with the latest changes from the dev branch. Nightly builds may be unstable. For stable releases, switch to the stable update channel.
 
           ### Changelog
-          ${{ steps.changelog.outputs.content }}
-          "@
+          BODYEOF
+          echo "" >> body.md
+          cat artifacts/changelog.md >> body.md
+          gh release edit nightly \
+            --title "Vibe Music ${{ needs.bump.outputs.DISPLAY_VERSION }}" \
+            --notes-file body.md
 
-          gh release edit nightly --title "$title" --notes "$body"
+      - name: Generate and upload combined latest.json
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create versioned nightly tag
         run: |
-          $nightlyTag = "v${{ steps.version.outputs.NEW_VERSION }}-nightly.$(Get-Date -Format 'yyyyMMdd')"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git tag -a "$nightlyTag" -m "Nightly build ${{ steps.version.outputs.NEW_VERSION }}"
-          git push origin "$nightlyTag"
-          Write-Host "Created versioned nightly tag: $nightlyTag"
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          $version = "${{ needs.bump.outputs.NEW_VERSION }}"
+          $repo = "${{ github.repository }}"
+          $baseUrl = "https://github.com/$repo/releases/download/nightly"
+          $pubDate = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ss") + "Z"
 
-      - name: Commit version bump
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
-          git commit -m "chore: bump version to ${{ steps.version.outputs.NEW_VERSION }} [skip ci]" || echo "No changes to commit"
-          git push origin dev
+          $patterns = @{
+            'windows-x86_64' = '_x64_en-US\.msi\.zip$'
+            'darwin-x86_64'  = '_x64\.dmg\.tar\.gz$'
+            'darwin-aarch64' = '_aarch64\.dmg\.tar\.gz$'
+            'linux-x86_64'   = '_amd64\.AppImage\.tar\.gz$'
+          }
+
+          $platforms = @{}
+          Get-ChildItem -Path artifacts -Recurse -File | ForEach-Object {
+            $filename = $_.Name
+            foreach ($key in $patterns.Keys) {
+              if ($filename -match $patterns[$key]) {
+                $sigFile = Join-Path $_.DirectoryName "$filename.sig"
+                $signature = ""
+                if (Test-Path $sigFile) {
+                  $signature = (Get-Content $sigFile -Raw).Trim()
+                }
+                $platforms[$key] = @{
+                  url = "$baseUrl/$filename"
+                  signature = $signature
+                }
+                break
+              }
+            }
+          }
+
+          $latestJson = @{
+            version = $version
+            pub_date = $pubDate
+            platforms = $platforms
+          }
+
+          $jsonPath = Join-Path artifacts "latest.json"
+          $latestJson | ConvertTo-Json -Depth 10 | Set-Content $jsonPath
+          Write-Host "Generated latest.json:"
+          Get-Content $jsonPath
+
+          gh release upload nightly $jsonPath --clobber
+          Write-Host "Uploaded combined latest.json"

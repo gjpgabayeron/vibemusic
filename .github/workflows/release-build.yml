@@ -8,7 +8,29 @@ env:
   VIBEMUSIC_NIGHTLY_ENDPOINT: "https://github.com/justCallMeJeg/vibemusic/releases/download/nightly/latest.json"
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      VERSION: ${{ steps.version.outputs.VERSION }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.release.tag_name }}"
+          $version = $tag -replace '^v', ''
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Release version: $version"
+
   build:
+    needs: prepare
+    runs-on: ${{ matrix.platform }}
     permissions:
       contents: write
     strategy:
@@ -17,45 +39,26 @@ jobs:
         include:
           - platform: macos-latest
             args: --target aarch64-apple-darwin
+            artifact-name: macos-aarch64
+            bundle-path: src-tauri/target/aarch64-apple-darwin/release/bundle
           - platform: macos-latest
             args: --target x86_64-apple-darwin
+            artifact-name: macos-x86_64
+            bundle-path: src-tauri/target/x86_64-apple-darwin/release/bundle
           - platform: ubuntu-22.04
             args: ""
+            artifact-name: linux-x86_64
+            bundle-path: src-tauri/target/release/bundle
           - platform: windows-latest
             args: ""
-
-    runs-on: ${{ matrix.platform }}
+            artifact-name: windows-x86_64
+            bundle-path: src-tauri/target/release/bundle
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name }}
           fetch-depth: 0
-
-      - name: Get version from tag
-        id: version
-        run: |
-          $tag = "${{ github.event.release.tag_name }}"
-          $version = $tag -replace '^v', ''
-          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-        shell: pwsh
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "npm"
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
-      - name: Cache Cargo Dependencies
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: "src-tauri -> target"
 
       - name: Install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
@@ -63,37 +66,124 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
 
-      - name: Install frontend dependencies
-        run: npm install
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
-      - name: Verify version consistency
-        run: npm run verify:versions
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: Build and upload to release
-        uses: tauri-apps/tauri-action@v0
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm install
+
+      - name: Build Tauri app
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          tagName: ${{ github.event.release.tag_name }}
-          releaseName: "Vibe Music v${{ steps.version.outputs.VERSION }}"
-          releaseBody: ${{ github.event.release.body }}
-          releaseDraft: false
-          prerelease: false
-          includeUpdaterJson: true
-          args: ${{ matrix.args }}
+        run: npm run tauri build -- ${{ matrix.args }}
 
-      - name: Update CHANGELOG.md in repo
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git fetch origin master
-          git checkout master
-          git cliff --output CHANGELOG.md
-          git add CHANGELOG.md
-          git commit -m "docs: update CHANGELOG for v${{ steps.version.outputs.VERSION }} [skip ci]" || echo "No changes"
-          git push origin master
+      - name: Upload bundle artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.artifact-name }}
+          path: ${{ matrix.bundle-path }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bundle-*
+          merge-multiple: true
+          path: artifacts
+
+      - name: Upload artifacts to release
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.event.release.tag_name }}"
+          Get-ChildItem -Path artifacts -Recurse -File | ForEach-Object {
+            Write-Host "Uploading: $($_.Name)"
+            gh release upload $tag "$($_.FullName)" --clobber
+          }
+
+      - name: Generate and upload combined latest.json
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = "${{ needs.prepare.outputs.VERSION }}"
+          $tag = "${{ github.event.release.tag_name }}"
+          $repo = "${{ github.repository }}"
+          $baseUrl = "https://github.com/$repo/releases/download/$tag"
+          $pubDate = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ss") + "Z"
+
+          $patterns = @{
+            'windows-x86_64' = '_x64_en-US\.msi\.zip$'
+            'darwin-x86_64'  = '_x64\.dmg\.tar\.gz$'
+            'darwin-aarch64' = '_aarch64\.dmg\.tar\.gz$'
+            'linux-x86_64'   = '_amd64\.AppImage\.tar\.gz$'
+          }
+
+          $platforms = @{}
+          Get-ChildItem -Path artifacts -Recurse -File | ForEach-Object {
+            $filename = $_.Name
+            foreach ($key in $patterns.Keys) {
+              if ($filename -match $patterns[$key]) {
+                $sigFile = Join-Path $_.DirectoryName "$filename.sig"
+                $signature = ""
+                if (Test-Path $sigFile) {
+                  $signature = (Get-Content $sigFile -Raw).Trim()
+                }
+                $platforms[$key] = @{
+                  url = "$baseUrl/$filename"
+                  signature = $signature
+                }
+                break
+              }
+            }
+          }
+
+          $latestJson = @{
+            version = $version
+            pub_date = $pubDate
+            platforms = $platforms
+          }
+
+          $jsonPath = Join-Path artifacts "latest.json"
+          $latestJson | ConvertTo-Json -Depth 10 | Set-Content $jsonPath
+          Write-Host "Generated latest.json:"
+          Get-Content $jsonPath
+
+          gh release upload $tag $jsonPath --clobber
+          Write-Host "Uploaded combined latest.json to $tag"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update CHANGELOG.md in repo
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git cliff --output CHANGELOG.md
+          git add CHANGELOG.md
+          git commit -m "docs: update CHANGELOG for v${{ needs.prepare.outputs.VERSION }} [skip ci]" || echo "No changes"
+          git push origin master
