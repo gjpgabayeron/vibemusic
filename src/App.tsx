@@ -135,7 +135,7 @@ export default function App() {
     }
   }, [activeProfileId, loadSettings]);
 
-  // Handle defaults after settings load
+
   useEffect(() => {
     if (!isSettingsLoading && activeProfileId) {
       // Apply settings logic

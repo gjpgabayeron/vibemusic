@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   getPlaylistTracks,
   deletePlaylist,
@@ -9,7 +9,7 @@ import {
 } from "@/lib/api";
 import { useNavigationStore, useDetailView } from "@/stores/navigation-store";
 import { useAudioStore, useCurrentTrack } from "@/stores/audio-store";
-import { ChevronLeft, Play, Trash2, Plus, Music } from "lucide-react";
+import { ChevronLeft, Play, Trash2, Plus, Music, Pencil, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MusicListItem from "@/components/shared/item/music-list";
 import { formatDistanceToNow } from "date-fns";
@@ -17,12 +17,10 @@ import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
 import { convertFileSrc } from "@tauri-apps/api/core";
-
 import { ArtworkImage } from "@/components/shared/artwork-image";
 import { useLibraryStore } from "@/stores/library-store";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PlaylistEditDialog } from "@/components/dialogs/playlist-edit-dialog";
-import { Pencil, GripVertical } from "lucide-react";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -30,7 +28,6 @@ import { TrackSelectDialog } from "@/components/dialogs/track-select-dialog";
 import { VirtualizedSortableList } from "@/components/shared/virtualized-sortable-list";
 import { TrackListHeader } from "@/components/shared/track-list-header";
 import { CompactPageHeader } from "@/components/shared/compact-page-header";
-import { useRef } from "react";
 
 interface SortableTrackItemProps {
   track: Track;

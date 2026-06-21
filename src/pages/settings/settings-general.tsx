@@ -3,14 +3,11 @@ import { Settings, Power, HardDrive } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings-store";
 
 export function SettingsGeneral() {
-  // These will be added to the store in the next step
   const {
     closeToTray,
     setCloseToTray,
     scanOnStartup,
     setScanOnStartup,
-    // autoplay,
-    // setAutoplay,
   } = useSettingsStore();
 
   return (
@@ -49,18 +46,6 @@ export function SettingsGeneral() {
           <Switch checked={scanOnStartup} onCheckedChange={setScanOnStartup} />
         </div>
 
-        {/* Autoplay */}
-        {/* <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 border border-border">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="font-medium">Autoplay</div>
-            </div>
-            <div className="text-sm text-muted-foreground pl-6">
-              Resume playback automatically when app starts
-            </div>
-          </div>
-          <Switch checked={autoplay} onCheckedChange={setAutoplay} />
-        </div> */}
       </div>
     </div>
   );

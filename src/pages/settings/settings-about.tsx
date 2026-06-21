@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useUpdateStore } from "@/stores/update-store";
 import { useAudioStore } from "@/stores/audio-store";
-import { Loader2, CheckCircle2, Download, Info } from "lucide-react";
+import { Loader2, CheckCircle2, Download, Info, FileText } from "lucide-react";
 import { getVersion } from "@tauri-apps/api/app";
 import { useEffect, useState } from "react";
 import { UpdateDialog } from "@/components/dialogs/update-dialog";
@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/tooltip";
 import { appLogDir } from "@tauri-apps/api/path";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { FileText } from "lucide-react";
 import { logger } from "@/lib/logger";
 
 // Helper to format bytes
@@ -231,7 +230,7 @@ export function SettingsAbout() {
       <div className="p-6 rounded-xl bg-secondary/50 border border-border space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <h3 className="text-foreground font-medium">Trobleshooting</h3>
+            <h3 className="text-foreground font-medium">Troubleshooting</h3>
             <p className="text-sm text-muted-foreground">
               View application logs for debugging
             </p>

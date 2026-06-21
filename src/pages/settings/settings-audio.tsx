@@ -284,9 +284,6 @@ export function SettingsAudio() {
                 )}
               </div>
             </div>
-            {/* <div className="flex gap-2">
-               Check Status button removed as per request
-            </div> */}
           </div>
 
           {/* Actions */}

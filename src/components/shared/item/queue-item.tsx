@@ -102,10 +102,7 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
                   <Play size={16} fill="currentColor" />
                 )}
               </div>
-            ) : // Placeholder or empty to align?
-            // Maybe show nothing or music note?
-            // Existing design didn't have icon.
-            null
+            ) : null
             // <div className="w-4 h-4" />
           }
 

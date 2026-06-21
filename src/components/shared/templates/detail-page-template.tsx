@@ -68,35 +68,6 @@ export function DetailPageTemplate({
         onBack={onBack}
         onPlay={onPlay}
       />
-      {/* 
-        We rely on the child (VirtualizedList) to invoke the scroll handler.
-        In a perfect world, this template would wrap the scrollable area,
-        but VirtualizedList manages its own scroll container.
-        So we pass handleScroll to the child to use.
-      */}
-      {/* 
-        Ideally, we'd pass a prop like `scrollHandler={handleScroll}` to children,
-        but standard `children` prop makes it tricky without cloneElement.
-        For now, we expect the usage to be manual composition in the page component
-        OR we refactor VirtualizedList to forward scroll events if wrapped here?
-        
-        Let's try a simpler approach: The Template renders the container and header,
-        but exposes the `handleScroll` function or simply logic for the page to use?
-        
-        No, cleaner API: <DetailPageTemplate ... ><VirtualizedList onScroll={handleScroll} ... /></DetailPageTemplate>
-        But wait, `handleScroll` is defined INSIDE here.
-        
-        Better API:
-        The Page renders:
-        <DetailPageTemplate ... >
-           {(handleScroll) => <VirtualizedList onScroll={handleScroll} ... />}
-        </DetailPageTemplate>
-        
-        Or simpler: The template IS the container. But VirtualizedList needs to be the `overflow-y-auto`.
-        
-        Actually, looking at `VirtualizedList` source, it IS the scroll container.
-        So `DetailPageTemplate` is just a wrapper around it that places the CompactHeader on top.
-      */}
       {
         typeof children === "function"
           ? (

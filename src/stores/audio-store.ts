@@ -123,7 +123,6 @@ export const useAudioStore = create<AudioStore>((set, get) => {
   };
 
   // Internal next handler
-  // Internal next handler
   const handleNext = async () => {
     const state = get();
     // Record stats for the finishing track

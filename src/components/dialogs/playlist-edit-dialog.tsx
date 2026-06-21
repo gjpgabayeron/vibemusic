@@ -55,9 +55,6 @@ export function PlaylistEditDialog({
       });
 
       if (file) {
-        // Tauri 2: file is path string? Checks docs.
-        // open returns null | string | string[] depending on options.
-        // With multiple: false, it returns string | null.
         const path = file as string;
 
         // Read file to blob URL for cropper
@@ -100,8 +97,6 @@ export function PlaylistEditDialog({
           recursive: true,
         });
 
-        // Wait, @tauri-apps/api/path join IS async in v2? Let's verify.
-        // Actually join is async.
         const pathPart = await join("covers", fileName);
 
         await writeFile(pathPart, pendingCoverBytes, {
@@ -127,8 +122,6 @@ export function PlaylistEditDialog({
       );
       await fetchPlaylists(); // Update store list
 
-      // Update local if parent doesn't refresh automatically?
-      // Parent wraps this dialog, so we should close it.
       onOpenChange(false);
       toast.success("Playlist updated");
 
