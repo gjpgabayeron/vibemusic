@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Camera } from "lucide-react";
@@ -43,9 +43,7 @@ export function ProfileManageDialog({
   const [avatarPath, setAvatarPath] = useState<string | undefined>(
     profile?.avatarPath ?? undefined
   );
-  const [avatarBytes, setAvatarBytes] = useState<Uint8Array | undefined>(
-    undefined
-  );
+  const avatarBytesRef = useRef<Uint8Array | undefined>(undefined);
   const [tempAvatarPreview, setTempAvatarPreview] = useState<
     string | undefined
   >(undefined);
@@ -86,7 +84,7 @@ export function ProfileManageDialog({
   };
 
   const handleCropComplete = (croppedBytes: Uint8Array) => {
-    setAvatarBytes(croppedBytes);
+    avatarBytesRef.current = croppedBytes;
 
     // Create preview
     const blob = new Blob([croppedBytes as unknown as BlobPart], {
@@ -103,7 +101,7 @@ export function ProfileManageDialog({
     if (!name.trim()) return;
     setIsSaving(true);
     try {
-      await onSave(name, color, avatarPath, avatarBytes);
+      await onSave(name, color, avatarPath, avatarBytesRef.current);
       onOpenChange(false);
     } catch (e) {
       logger.error("Failed to save profile", e);

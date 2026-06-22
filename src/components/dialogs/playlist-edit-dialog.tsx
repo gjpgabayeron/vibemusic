@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Playlist, updatePlaylist } from "@/lib/api";
 import { StandardDialog } from "@/components/shared/standard-dialog";
 import { Button } from "@/components/ui/button";
@@ -38,9 +38,7 @@ export function PlaylistEditDialog({
   // Image State
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
-  const [pendingCoverBytes, setPendingCoverBytes] = useState<Uint8Array | null>(
-    null
-  );
+  const pendingCoverBytesRef = useRef<Uint8Array | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const fetchPlaylists = useLibraryStore((s) => s.refreshPlaylists);
@@ -70,7 +68,7 @@ export function PlaylistEditDialog({
   };
 
   const handleCropComplete = (croppedBytes: Uint8Array) => {
-    setPendingCoverBytes(croppedBytes);
+    pendingCoverBytesRef.current = croppedBytes;
     // Create preview
     const blob = new Blob([croppedBytes as unknown as BlobPart]);
     const url = URL.createObjectURL(blob);
@@ -85,7 +83,7 @@ export function PlaylistEditDialog({
     try {
       let finalArtworkPath = playlist.artwork_path;
 
-      if (pendingCoverBytes) {
+      if (pendingCoverBytesRef.current) {
         // Save to app data
         const fileName = `playlist_${playlist.id}_${Date.now()}.jpg`;
 
@@ -99,7 +97,7 @@ export function PlaylistEditDialog({
 
         const pathPart = await join("covers", fileName);
 
-        await writeFile(pathPart, pendingCoverBytes, {
+        await writeFile(pathPart, pendingCoverBytesRef.current, {
           baseDir: BaseDirectory.AppData,
         });
 

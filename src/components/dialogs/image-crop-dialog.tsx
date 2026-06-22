@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import Cropper from "react-easy-crop";
@@ -29,12 +29,12 @@ export function ImageCropDialog({
 }: ImageCropDialogProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const croppedAreaPixelsRef = useRef<Area | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const onCropChangeComplete = useCallback(
     (_formattedArea: Area, croppedAreaPixels: Area) => {
-      setCroppedAreaPixels(croppedAreaPixels);
+      croppedAreaPixelsRef.current = croppedAreaPixels;
     },
     []
   );
@@ -89,10 +89,10 @@ export function ImageCropDialog({
   };
 
   const handleSave = async () => {
-    if (!imageSrc || !croppedAreaPixels) return;
+    if (!imageSrc || !croppedAreaPixelsRef.current) return;
     setIsProcessing(true);
     try {
-      const result = await getCroppedImg(imageSrc, croppedAreaPixels);
+      const result = await getCroppedImg(imageSrc, croppedAreaPixelsRef.current);
       if (result) {
         onCropComplete(result);
         onOpenChange(false);

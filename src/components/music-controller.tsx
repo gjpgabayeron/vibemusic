@@ -35,7 +35,7 @@ import {
 
 import { useNavigationStore } from "@/stores/navigation-store";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { logger } from "@/lib/logger";
 
 import placeholderArt from "@/assets/placeholder-art.png";
@@ -71,14 +71,14 @@ export default function MusicControler() {
 
   const isPlaying = status === "playing";
   const [sliderValue, setSliderValue] = useState([0]);
-  const [isDragging, setIsDragging] = useState(false);
+  const isDraggingRef = useRef(false);
 
   // Sync slider with audio position when not dragging
   useEffect(() => {
-    if (!isDragging) {
+    if (!isDraggingRef.current) {
       setSliderValue([position]);
     }
-  }, [position, isDragging]);
+  }, [position]);
 
   const formatDuration = (ms: number) => {
     const minutes = Math.floor(ms / 60000);
@@ -98,7 +98,7 @@ export default function MusicControler() {
 
   const handleSeekChange = useCallback(
     (value: number[]) => {
-      setIsDragging(true);
+      isDraggingRef.current = true;
       setDraggingSlider(true);
       setSliderValue(value);
     },
@@ -108,7 +108,7 @@ export default function MusicControler() {
   const handleSeekCommit = useCallback(
     (value: number[]) => {
       seek(value[0]);
-      setIsDragging(false);
+      isDraggingRef.current = false;
       setDraggingSlider(false);
     },
     [seek, setDraggingSlider],

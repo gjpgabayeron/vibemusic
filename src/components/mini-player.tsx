@@ -24,7 +24,7 @@ import {
   useDuration,
 } from "@/stores/audio-store";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import placeholderArt from "@/assets/placeholder-art.png";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useNavigationStore } from "@/stores/navigation-store";
@@ -223,23 +223,23 @@ export default function MiniPlayer() {
 
   const isPlaying = status === "playing";
   const [sliderValue, setSliderValue] = useState([0]);
-  const [isDragging, setIsDragging] = useState(false);
+  const isDraggingRef = useRef(false);
 
   useEffect(() => {
-    if (!isDragging) {
+    if (!isDraggingRef.current) {
       setSliderValue([position]);
     }
-  }, [position, isDragging]);
+  }, [position]);
 
   const handleSeekChange = (value: number[]) => {
-    setIsDragging(true);
+    isDraggingRef.current = true;
     setDraggingSlider(true);
     setSliderValue(value);
   };
 
   const handleSeekCommit = (value: number[]) => {
     seek(value[0]);
-    setIsDragging(false);
+    isDraggingRef.current = false;
     setDraggingSlider(false);
   };
 
