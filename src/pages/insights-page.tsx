@@ -1,12 +1,12 @@
 import { useEffect, useMemo } from "react";
 import { useScrollMask } from "@/hooks/use-scroll-mask";
 import { useStatsStore, type TimeRange } from "@/stores/stats-store";
-import { useNavigationStore } from "@/stores/navigation-store";
+import { useNavigationStore, useCurrentPage } from "@/stores/navigation-store";
 import { useAudioStore, useIsPlayerVisible } from "@/stores/audio-store";
 import { PageHeader } from "@/components/shared/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { Clock, Music, Radio, Sparkles } from "lucide-react";
+import { Clock, Music, Radio, Sparkles, BarChart2 } from "lucide-react";
 import artistPlaceholderArt from "@/assets/artist-placeholder-art.png";
 import { ListItem } from "@/components/shared/list-item";
 import { ListeningHeatmap } from "@/components/insights/listening-heatmap";
@@ -14,6 +14,7 @@ import { TrendIndicator } from "@/components/insights/trend-indicator";
 import { ListeningStreaks } from "@/components/insights/listening-streaks";
 import { WeeklyWrap } from "@/components/insights/weekly-wrap";
 import { PageLayout } from "@/components/shared/page-layout";
+import { EmptyState } from "@/components/shared/empty-state";
 
 function StatCard({
   icon: Icon,
@@ -88,13 +89,16 @@ export default function InsightsPage() {
   const { data, fetchStats, timeRange, setTimeRange } =
     useStatsStore();
   const { openAlbumDetail, openArtistDetail } = useNavigationStore();
+  const currentPage = useCurrentPage();
   const play = useAudioStore((s) => s.play);
   const isPlayerVisible = useIsPlayerVisible();
   const insightsScrollRef = useScrollMask();
 
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    if (currentPage === "insights") {
+      fetchStats();
+    }
+  }, [currentPage, fetchStats]);
 
   const totalPlays = useMemo(() => {
     if (!data?.top_tracks.length) return 0;
@@ -128,6 +132,24 @@ export default function InsightsPage() {
           <Skeleton className="h-64 rounded-xl" />
           <Skeleton className="h-64 rounded-xl" />
         </div>
+      </PageLayout>
+    );
+  }
+
+  const isEmpty =
+    data.total_listening_ms === 0 && data.top_tracks.length === 0;
+
+  if (isEmpty) {
+    return (
+      <PageLayout overflowHidden className={cn(isPlayerVisible ? "pb-39" : "")}>
+        <div className="flex flex-col shrink-0">
+          <PageHeader title="Insights" />
+        </div>
+        <EmptyState
+          icon={BarChart2}
+          title="No insights yet"
+          description="Start listening to music to see your listening statistics and trends."
+        />
       </PageLayout>
     );
   }
