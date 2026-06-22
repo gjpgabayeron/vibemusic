@@ -17,7 +17,9 @@ export async function getDominantColor(imageUrl: string): Promise<string> {
 
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = "Anonymous";
+    if (imageUrl.startsWith("http")) {
+      img.crossOrigin = "Anonymous";
+    }
     img.src = imageUrl;
 
     img.onload = () => {

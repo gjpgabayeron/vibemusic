@@ -190,10 +190,11 @@ export default function App() {
   // Listen for global scan progress to refresh library - extracted to custom hook
   useScanProgressListener(fetchLibrary);
 
+  const isPlaybackActive = status === "playing" || status === "paused";
+
   // Update gradient when track changes - only show when actually playing/paused
   useEffect(() => {
-    // Only show gradient when playing or paused (not during loading/stopped)
-    if (status === "loading" || status === "stopped") {
+    if (!isPlaybackActive) {
       setGradientColor("transparent");
       return;
     }
@@ -208,7 +209,7 @@ export default function App() {
     } else {
       setGradientColor("transparent");
     }
-  }, [currentTrack, status]);
+  }, [currentTrack?.id, isPlaybackActive]);
 
   // Initialize audio event listeners
   useEffect(() => {
