@@ -111,7 +111,7 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
           {/* Type/Status Indicator */}
           {
             isActive ? (
-              <div className="text-purple-400 shrink-0">
+              <div className="text-primary shrink-0">
                 {status === "playing" ? (
                   <Pause size={16} fill="currentColor" />
                 ) : (
@@ -124,7 +124,7 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <div
               className={`text-sm font-medium w-full ${
-                isActive ? "text-purple-400" : "text-foreground"
+                isActive ? "text-primary" : "text-foreground"
               }`}
             >
               <ScrollingText>{track.title}</ScrollingText>

@@ -125,7 +125,8 @@ export default function ProfileSelectionPage() {
                   />
                 ) : (
                   <div
-                    className={`w-full h-full rounded-full ${profile.color} flex items-center justify-center text-4xl font-bold shadow-[0_4px_12px_rgba(0,0,0,0.5)] group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.6)] ring-2 ring-transparent group-hover:ring-primary/50 text-white transition-all duration-300`}
+                    className="w-full h-full rounded-full flex items-center justify-center text-4xl font-bold shadow-[0_4px_12px_rgba(0,0,0,0.5)] group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.6)] ring-2 ring-transparent group-hover:ring-primary/50 text-white transition-all duration-300"
+                    style={{ backgroundColor: profile.color }}
                   >
                     {profile.name[0]?.toUpperCase()}
                   </div>

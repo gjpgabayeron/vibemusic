@@ -52,7 +52,7 @@ export default function QueueMenu() {
               <p className="font-bold text-foreground truncate text-lg">
                 {currentTrack.title}
               </p>
-              <p className="text-sm text-purple-400 truncate">
+              <p className="text-sm text-primary truncate">
                 {currentTrack.artist || "Unknown Artist"}
               </p>
             </div>

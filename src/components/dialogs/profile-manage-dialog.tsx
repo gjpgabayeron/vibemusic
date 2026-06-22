@@ -10,14 +10,14 @@ import { logger } from "@/lib/logger";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 
 const AVATAR_COLORS = [
-  "bg-red-500",
-  "bg-blue-500",
-  "bg-green-500",
-  "bg-yellow-500",
-  "bg-purple-500",
-  "bg-pink-500",
-  "bg-indigo-500",
-  "bg-cyan-500",
+  "#ef4444",
+  "#3b82f6",
+  "#22c55e",
+  "#eab308",
+  "#a855f7",
+  "#ec4899",
+  "#6366f1",
+  "#06b6d4",
 ];
 
 interface ProfileManageDialogProps {
@@ -146,9 +146,8 @@ export function ProfileManageDialog({
               type="button"
               aria-label="Upload avatar"
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleAvatarUpload(); }}
-              className={`relative w-20 h-20 rounded-md overflow-hidden flex items-center justify-center text-xl font-bold shrink-0 group cursor-pointer ${
-                !avatarPath && !tempAvatarPreview ? color : ""
-              }`}
+              className="relative w-20 h-20 rounded-md overflow-hidden flex items-center justify-center text-xl font-bold shrink-0 group cursor-pointer"
+              style={!avatarPath && !tempAvatarPreview ? { backgroundColor: color } : undefined}
               onClick={handleAvatarUpload}
             >
               {avatarPath || tempAvatarPreview ? (
@@ -189,13 +188,14 @@ export function ProfileManageDialog({
                 <button
                   key={c}
                   type="button"
-                  aria-label={`Color ${c.replace("bg-", "").replace("-500", "")}`}
+                  aria-label={`Color ${c}`}
                   aria-pressed={color === c}
-                  className={`w-8 h-8 rounded-full ${c} ${
+                  className={`w-8 h-8 rounded-full ${
                     color === c
                       ? "ring-2 ring-foreground ring-offset-2 ring-offset-popover"
                       : "opacity-70 hover:opacity-100"
                   }`}
+                  style={{ backgroundColor: c }}
                   onClick={() => setColor(c)}
                 />
               ))}

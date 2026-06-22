@@ -92,7 +92,7 @@ export function SettingsAbout() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 mb-6">
-        <Info className="w-5 h-5 text-purple-500" />
+        <Info className="w-5 h-5 text-primary" />
         <h2 className="text-xl font-semibold">About</h2>
       </div>
 

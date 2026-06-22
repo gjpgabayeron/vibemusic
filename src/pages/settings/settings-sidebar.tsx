@@ -32,7 +32,7 @@ export function SettingsSidebar({
             className={cn(
               "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left",
               isActive
-                ? "bg-purple-500/10 text-purple-400"
+                ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             )}
           >

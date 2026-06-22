@@ -30,7 +30,7 @@ export function SettingsAudio() {
   return (
     <div className="space-y-6 pb-10">
       <div className="flex items-center gap-2 mb-6">
-        <Speaker className="w-5 h-5 text-purple-500" />
+        <Speaker className="w-5 h-5 text-primary" />
         <h2 className="text-xl font-semibold">Audio</h2>
       </div>
 

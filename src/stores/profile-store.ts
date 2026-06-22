@@ -5,10 +5,25 @@ import { invoke } from "@tauri-apps/api/core";
 import { useLibraryStore } from "./library-store";
 import { logger } from "@/lib/logger";
 
+const TAILWIND_CLASS_TO_HEX: Record<string, string> = {
+  "bg-red-500": "#ef4444",
+  "bg-blue-500": "#3b82f6",
+  "bg-green-500": "#22c55e",
+  "bg-yellow-500": "#eab308",
+  "bg-purple-500": "#a855f7",
+  "bg-pink-500": "#ec4899",
+  "bg-indigo-500": "#6366f1",
+  "bg-cyan-500": "#06b6d4",
+};
+
+function migrateColor(color: string): string {
+  return TAILWIND_CLASS_TO_HEX[color] || color;
+}
+
 export interface Profile {
   id: string;
   name: string;
-  color: string; // Hex or tailwind class info
+  color: string; // Hex color (e.g. "#3b82f6")
   avatarPath?: string;
 }
 
@@ -54,7 +69,9 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   loadProfiles: async () => {
     try {
       const store = await getStore();
-      const profiles = (await store.get<Profile[]>("profiles")) || [];
+      const profiles = ((await store.get<Profile[]>("profiles")) || []).map(
+        (p) => ({ ...p, color: migrateColor(p.color) })
+      );
       const activeProfileId = await store.get<string>("activeProfileId");
 
       if (profiles.length === 0) {
@@ -62,7 +79,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         const defaultProfile: Profile = {
           id: uuidv4(),
           name: "Default",
-          color: "bg-blue-500",
+          color: "#3b82f6",
         };
         const newProfiles = [defaultProfile];
 

@@ -33,6 +33,7 @@ import { ShellStates } from "@/components/shell-states";
 
 import { useLibraryStore } from "@/stores/library-store";
 import { logger } from "@/lib/logger";
+import { useProfileTheme } from "@/hooks/use-profile-theme";
 import { toast } from "sonner";
 import { useUpdateStore } from "./stores/update-store";
 
@@ -81,6 +82,8 @@ export default function App() {
   const isProfilesLoading = useProfileStore((s) => s.isLoading);
 
   const activeProfile = profiles.find((p) => p.id === activeProfileId);
+
+  useProfileTheme();
 
   const isPlayerVisible = !!currentTrack && status !== "stopped";
 

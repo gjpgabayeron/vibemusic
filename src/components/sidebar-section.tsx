@@ -22,10 +22,8 @@ export function SidebarSection({ activeProfile, onProfileClick, onImport, isScan
             onProfileClick();
           }
         }}
-        className={`aspect-square w-full shrink-0 rounded-lg overflow-hidden ${
-          !activeProfile?.avatarPath &&
-          (activeProfile?.color || "bg-gray-600")
-        } flex items-center justify-center text-white font-bold cursor-pointer hover:scale-105 transition-transform relative`}
+        className="aspect-square w-full shrink-0 rounded-lg overflow-hidden flex items-center justify-center text-white font-bold cursor-pointer hover:scale-105 transition-transform relative"
+        style={!activeProfile?.avatarPath ? { backgroundColor: activeProfile?.color || "#6b7280" } : undefined}
         title={`Current: ${
           activeProfile?.name || "User"
         } (Click to switch)`}

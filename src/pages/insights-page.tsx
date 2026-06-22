@@ -40,7 +40,7 @@ function StatCard({
       </div>
       <div className="text-2xl font-bold text-foreground z-10">{value}</div>
       <Icon
-        className="absolute -right-4 -bottom-4 text-muted-foreground/10 group-hover:text-purple-500/30 transition-all duration-500"
+        className="absolute -right-4 -bottom-4 text-muted-foreground/10 group-hover:text-primary/30 transition-all duration-500"
         size={64}
       />
     </div>

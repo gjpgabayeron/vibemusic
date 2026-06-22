@@ -19,7 +19,7 @@ export function SidePanelActions({ sidePanel, onToggleQueue, onSetSidePanel, onT
       <Tooltip delayDuration={1000}>
         <TooltipTrigger asChild>
           <Button id="queue-menu-button" variant="ghost" onClick={onToggleQueue}
-            className={sidePanel === "queue" ? "text-purple-500 hover:text-purple-400" : ""}
+            className={sidePanel === "queue" ? "text-primary" : ""}
           >
             <Logs size={20} />
           </Button>
@@ -31,7 +31,7 @@ export function SidePanelActions({ sidePanel, onToggleQueue, onSetSidePanel, onT
         <TooltipTrigger asChild>
           <Button id="lyrics-button" variant="ghost"
             onClick={() => onSetSidePanel(sidePanel === "lyrics" ? "none" : "lyrics")}
-            className={sidePanel === "lyrics" ? "text-purple-500 hover:text-purple-400" : ""}
+            className={sidePanel === "lyrics" ? "text-primary" : ""}
           >
             <Mic2 size={20} />
           </Button>
@@ -43,7 +43,7 @@ export function SidePanelActions({ sidePanel, onToggleQueue, onSetSidePanel, onT
         <TooltipTrigger asChild>
           <Button id="info-button" variant="ghost"
             onClick={() => onSetSidePanel(sidePanel === "track-details" ? "none" : "track-details")}
-            className={sidePanel === "track-details" ? "text-purple-500 hover:text-purple-400" : ""}
+            className={sidePanel === "track-details" ? "text-primary" : ""}
           >
             <Info size={20} />
           </Button>

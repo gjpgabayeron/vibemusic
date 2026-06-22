@@ -32,7 +32,7 @@ export function PlaybackControls({
       <Tooltip delayDuration={1000}>
         <TooltipTrigger asChild>
           <Button variant="ghost" onClick={onToggleShuffle}
-            className={shuffle ? "text-purple-500 hover:text-purple-400" : ""}
+            className={shuffle ? "text-primary" : ""}
           >
             <Shuffle size={20} />
           </Button>
@@ -74,7 +74,7 @@ export function PlaybackControls({
       <Tooltip delayDuration={1000}>
         <TooltipTrigger asChild>
           <Button variant="ghost" onClick={onToggleRepeat}
-            className={repeat !== "off" ? "text-purple-500 hover:text-purple-400" : ""}
+            className={repeat !== "off" ? "text-primary" : ""}
           >
             {repeat === "one" ? <Repeat1 size={20} /> : <Repeat size={20} />}
           </Button>
