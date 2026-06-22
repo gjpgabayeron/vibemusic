@@ -25,7 +25,9 @@ export default function LyricsPanel() {
   const [source, setSource] = useState<string>("");
 
   // Cache lyrics data
-  const lyricsCache = useRef(new Map<string, LyricsData>()).current;
+  const lyricsCacheRef = useRef<Map<string, LyricsData> | null>(null);
+  if (lyricsCacheRef.current === null) lyricsCacheRef.current = new Map<string, LyricsData>();
+  const lyricsCache = lyricsCacheRef.current;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLDivElement>(null);
