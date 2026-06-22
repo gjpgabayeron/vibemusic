@@ -2,7 +2,7 @@
 
 ## Stack
 - **Frontend**: React 19, TypeScript, Tailwind CSS v4 (CSS-first config, no tailwind.config.js), Vite 7
-- **Desktop**: Tauri v2, Rust backend (FFmpeg + CPAL audio engine, not Web Audio)
+- **Desktop**: Tauri v2, Rust backend (symphonia + CPAL audio engine, not Web Audio)
 - **State**: Zustand stores in `src/stores/`
 - **UI**: Radix primitives, Lucide icons, shadcn/ui (New York style, `@/components/ui/`)
 - **Database**: SQLite via `tauri-plugin-sql` with migrations in `src-tauri/migrations/`
@@ -16,7 +16,6 @@
 | `npm run build` | `tsc && vite build` (typecheck then bundle) |
 | `npm run lint` | `eslint src/ && stylelint "src/**/*.css"` |
 | `npm run lint:fix` | Auto-fix both ESLint and Stylelint |
-| `npm run setup:ffmpeg` | Download FFmpeg binaries to `src-tauri/binaries/` (required for audio) |
 | `npm run version:bump` | Bump version in package.json, tauri.conf.json, Cargo.toml (arg: `patch`/`minor`/`major`) |
 | `npm run verify:versions` | Check all 3 version files agree |
 | `npm run changelog:preview` | Preview unreleased changelog locally |
@@ -35,7 +34,7 @@ Conventional commits enforced via commitlint (`@commitlint/config-conventional`)
 - **Nightly**: Push to `dev` → `nightly.yml` bumps patch version, builds, uploads to rolling `nightly` release. A versioned git tag (`vX.Y.Z-nightly.YYYYMMDD`) is also created for history.
 
 ## Architecture
-- **Rust backend** (`src-tauri/src/`): audio engine, scanner, FFmpeg wrapper, SQLite helpers, playlists, profiles, lyrics, stats, file watcher, updater
+- **Rust backend** (`src-tauri/src/`): audio engine, scanner, SQLite helpers, playlists, profiles, lyrics, stats, file watcher, updater
 - **Tauri commands** registered in `lib.rs` under a single `generate_handler![]` block
 - **Profile system**: each profile has its own SQLite DB; profile data is per-profile, settings (library paths, theme) are per-profile
 - **File watcher** (`watcher.rs`) monitors library directories for changes
@@ -64,4 +63,4 @@ Audio: `audio_play`, `audio_pause`, `audio_resume`, `audio_stop`, `audio_seek`, 
 Library: `get_all_tracks`, `get_all_albums`, `get_album_by_id`, `get_album_tracks`, `get_all_artists`, `get_artist_by_id`, `get_artist_albums`, `get_artist_tracks`, `search`, `delete_track`, `remove_location`
 Scanner: `scan_folder`, `scan_music_library`, `get_file_metadata`, `check_files_exist`, `prune_library`
 Playlists: `create_playlist`, `delete_playlist`, `update_playlist`, `get_playlists`, `get_playlist_tracks`, `add_track_to_playlist`, `remove_track_from_playlist`, `reorder_playlist`
-Other: profile CRUD, FFmpeg check/download, lyrics fetch, stats record/get, updater, file watcher
+Other: profile CRUD, lyrics fetch, stats record/get, updater, file watcher
