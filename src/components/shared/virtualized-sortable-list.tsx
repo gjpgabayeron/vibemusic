@@ -94,7 +94,7 @@ export function VirtualizedSortableList<T>({
     <div
       ref={parentRef}
       onScroll={onScroll}
-      className={`flex-1 overflow-y-auto ${className} scroll-mask-y custom-scrollbar`}
+      className={`flex-1 overflow-y-auto overflow-x-hidden ${className} scroll-mask-y custom-scrollbar`}
     >
       <div
         style={{

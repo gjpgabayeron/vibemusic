@@ -1,8 +1,12 @@
+import { useEffect, useRef, useState } from "react";
 import { Track } from "@/lib/api";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Play, Pause } from "lucide-react";
 import { formatDuration } from "@/lib/format";
+import { ScrollingText } from "@/components/shared/scrolling-text";
+import { ArtistLinks } from "@/components/shared/artist-links";
+import { cn } from "@/lib/utils";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,7 +14,6 @@ import {
   ContextMenuTrigger,
 } from "../../ui/context-menu";
 import { useAudioStore, usePlayerStatus } from "@/stores/audio-store";
-import { useNavigationStore } from "@/stores/navigation-store";
 
 interface QueueItemProps {
   track: Track;
@@ -24,7 +27,27 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
   const resume = useAudioStore((s) => s.resume);
   const queue = useAudioStore((s) => s.queue);
   const status = usePlayerStatus();
-  const openArtistDetail = useNavigationStore((s) => s.openArtistDetail);
+  const artistContainerRef = useRef<HTMLDivElement>(null);
+  const artistContentRef = useRef<HTMLDivElement>(null);
+  const [artistOverflows, setArtistOverflows] = useState(false);
+
+  useEffect(() => {
+    const check = () => {
+      if (artistContainerRef.current && artistContentRef.current) {
+        setArtistOverflows(
+          artistContentRef.current.scrollWidth > artistContainerRef.current.clientWidth
+        );
+      }
+    };
+    check();
+    const observer = new ResizeObserver(check);
+    if (artistContainerRef.current) {
+      observer.observe(artistContainerRef.current);
+    }
+    return () => observer.disconnect();
+  }, [track.artist_names, track.artist]);
+
+  const artistText = track.artist_names.join(", ") || track.artist || "";
 
   const {
     attributes,
@@ -50,19 +73,10 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
       } else if (status === "paused") {
         resume();
       } else {
-        // Status is "stopped" or "loading" - need to re-play the track
         play(track, queue);
       }
     } else {
-      // Play this track from the current queue
       play(track, queue);
-    }
-  };
-
-  const handleArtistClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (track.artist_id) {
-      openArtistDetail(track.artist_id);
     }
   };
 
@@ -79,7 +93,7 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
               handlePlayClick(e as unknown as React.MouseEvent);
             }
           }}
-          className={`flex items-center gap-3 p-2 rounded-md group hover:bg-accent cursor-pointer ${
+          className={`flex items-center gap-3 p-2 rounded-md group hover:bg-accent cursor-pointer w-full text-left ${
             isActive ? "bg-accent" : ""
           }`}
         >
@@ -89,7 +103,7 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
             {...attributes}
             {...listeners}
             onClick={(e) => e.stopPropagation()}
-            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-opacity"
+            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-opacity shrink-0"
           >
             <GripVertical size={16} />
           </div>
@@ -97,7 +111,7 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
           {/* Type/Status Indicator */}
           {
             isActive ? (
-              <div className="text-purple-400">
+              <div className="text-purple-400 shrink-0">
                 {status === "playing" ? (
                   <Pause size={16} fill="currentColor" />
                 ) : (
@@ -105,35 +119,54 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
                 )}
               </div>
             ) : null
-            // <div className="w-4 h-4" />
           }
 
           <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <p
-              className={`text-sm font-medium truncate ${
+            <div
+              className={`text-sm font-medium w-full ${
                 isActive ? "text-purple-400" : "text-foreground"
               }`}
             >
-              {track.title}
-            </p>
-            {track.artist_id ? (
-              <button
-                type="button"
-                className="text-xs text-muted-foreground truncate hover:text-foreground cursor-pointer text-left"
-                onClick={handleArtistClick}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    handleArtistClick(e as unknown as React.MouseEvent);
-                  }
-                }}
+              <ScrollingText>{track.title}</ScrollingText>
+            </div>
+            <div
+              ref={artistContainerRef}
+              className="relative overflow-hidden whitespace-nowrap text-xs text-muted-foreground w-full"
+            >
+              <div
+                ref={artistContentRef}
+                className={cn(
+                  "inline-block transition-transform will-change-transform",
+                  artistOverflows && "motion-safe:hover:animate-scroll-text motion-safe:group-hover:animate-scroll-text",
+                )}
+                style={
+                  artistOverflows
+                    ? { animationDuration: `${Math.min(artistText.length * 150, 10000)}ms` }
+                    : undefined
+                }
               >
-                {track.artist}
-              </button>
-            ) : (
-              <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
-            )}
+                <span className="inline-block pr-8">
+                  <ArtistLinks
+                    names={track.artist_names}
+                    ids={track.artist_ids}
+                    fallbackName={track.artist}
+                    fallbackId={track.artist_id}
+                  />
+                </span>
+                {artistOverflows && (
+                  <span aria-hidden="true" className="inline-block pr-8">
+                    <ArtistLinks
+                      names={track.artist_names}
+                      ids={track.artist_ids}
+                      fallbackName={track.artist}
+                      fallbackId={track.artist_id}
+                    />
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground font-mono">
+          <div className="text-xs text-muted-foreground font-mono shrink-0">
             {formatDuration(track.duration_ms)}
           </div>
         </button>
