@@ -16,14 +16,10 @@ export type CloseAction =
  * @param onClose - Callback with the action to take
  */
 export function useWindowCloseHandler(onClose: (action: CloseAction) => void) {
-  const hasSetup = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
   useEffect(() => {
-    if (hasSetup.current) return;
-    hasSetup.current = true;
-
     const appWindow = getCurrentWindow();
     const unlistenPromise = appWindow.onCloseRequested(async (event) => {
       event.preventDefault();

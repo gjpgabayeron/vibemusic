@@ -13,7 +13,6 @@ import { SidebarSection } from "./components/sidebar-section";
 import { GlobalSearch } from "./components/dialogs/global-search";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { exit } from "@tauri-apps/plugin-process";
 
 import { getDominantColor } from "./lib/color-utils";
 import {
@@ -167,10 +166,9 @@ export default function App() {
   }, [isSettingsLoading, activeProfileId, fetchLibrary]);
 
   const handleQuitApp = async () => {
-    await stop();
     setIsQuitDialogOpen(false);
     setIsCloseToTrayDialogOpen(false);
-    await exit(0);
+    await invoke("quit_app");
   };
 
   const handleCloseToTrayHide = async () => {

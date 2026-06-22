@@ -104,6 +104,9 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit" => {
+                        if let Some(state) = app.try_state::<AudioState>() {
+                            state.0.stop();
+                        }
                         app.exit(0);
                     }
                     "show" => {
@@ -190,7 +193,15 @@ pub fn run() {
             // Stats
             stats::record_playback,
             stats::get_stats,
+            // App
+            quit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn quit_app(state: tauri::State<AudioState>, app: tauri::AppHandle) {
+    state.0.stop();
+    app.exit(0);
 }
