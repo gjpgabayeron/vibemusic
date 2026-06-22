@@ -158,6 +158,7 @@ export default function LyricsPanel() {
           <div className="flex items-center justify-end mb-4 sticky top-0">
             {!autoScroll && isSynced && (
               <button
+                type="button"
                 onClick={() => setAutoScroll(true)}
                 className="text-xs bg-primary/20 hover:bg-primary/30 text-primary px-2 py-1 rounded-full transition-colors"
               >
@@ -188,8 +189,16 @@ export default function LyricsPanel() {
                 <div
                   key={index}
                   ref={isActive ? activeLineRef : null}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     if (line.timestamp_ms !== null) {
+                      seek(line.timestamp_ms);
+                      setAutoScroll(true);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && line.timestamp_ms !== null) {
                       seek(line.timestamp_ms);
                       setAutoScroll(true);
                     }

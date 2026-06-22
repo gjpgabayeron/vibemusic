@@ -247,8 +247,15 @@ export default function ArtistDetailPage() {
                       className="flex flex-col w-40 min-w-40 gap-2"
                     >
                       <div
+                        role="button"
+                        tabIndex={0}
                         className="relative aspect-square w-full rounded-lg overflow-hidden group cursor-pointer shadow-md"
                         onClick={(e) => handlePlayAlbum(e, album.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            handlePlayAlbum(e as unknown as React.MouseEvent, album.id);
+                          }
+                        }}
                       >
                         <img
                           className="w-full h-full object-cover transition-transform group-hover:scale-105"

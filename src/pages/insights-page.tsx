@@ -64,6 +64,7 @@ function TimeRangeSelector({
     <div className="flex bg-muted p-1 rounded-lg">
       {ranges.map((range) => (
         <button
+          type="button"
           key={range.value}
           onClick={() => onChange(range.value)}
           className={cn(

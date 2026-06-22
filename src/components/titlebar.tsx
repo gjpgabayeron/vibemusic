@@ -64,6 +64,7 @@ export function TitleBar() {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => appWindow.minimize()}
               className="p-2 hover:bg-accent rounded-md transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
             >
@@ -76,6 +77,7 @@ export function TitleBar() {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={handleMaximize}
               className="p-2 hover:bg-accent rounded-md transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
             >
@@ -90,6 +92,7 @@ export function TitleBar() {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => appWindow.close()}
               className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded-md transition-colors text-muted-foreground cursor-pointer"
             >

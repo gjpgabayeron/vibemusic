@@ -91,7 +91,14 @@ const MusicListItem = memo(function MusicListItem({
     <ContextMenu>
       <ContextMenuTrigger>
         <div
+          role="button"
+          tabIndex={0}
           onClick={handlePlayClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              handlePlayClick(e as unknown as React.MouseEvent);
+            }
+          }}
           className={`flex w-full h-min rounded-lg px-4 py-2 cursor-pointer group transition-colors ${
             !disableHover
               ? "hover:outline hover:outline-border hover:bg-accent/30"

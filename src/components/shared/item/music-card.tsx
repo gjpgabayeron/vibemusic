@@ -42,7 +42,14 @@ function MusicCard({ track, context }: MusicCardProps) {
     <ContextMenu>
       <ContextMenuTrigger>
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => play(track, context)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              play(track, context);
+            }
+          }}
           className={`flex flex-col w-min h-min rounded-lg px-4 py-2 hover:outline hover:outline-border hover:bg-accent/30 cursor-pointer group transition-colors ${
             isPlaying ? "bg-accent outline outline-border" : ""
           }`}

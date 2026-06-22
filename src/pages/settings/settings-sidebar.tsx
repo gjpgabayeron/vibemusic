@@ -26,6 +26,7 @@ export function SettingsSidebar({
         const isActive = activeTab === tab.id;
         return (
           <button
+            type="button"
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
             className={cn(

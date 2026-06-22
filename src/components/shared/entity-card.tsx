@@ -71,8 +71,15 @@ export const EntityCard = memo(function EntityCard({
 }: EntityCardProps) {
   const CardContent = (
     <div
+      role="button"
+      tabIndex={0}
       className={cn(cardVariants({ variant, className }))}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onClick?.();
+        }
+      }}
       {...props}
     >
       <div className={cn(imageVariants({ variant }), "overflow-visible")}>
@@ -85,6 +92,7 @@ export const EntityCard = memo(function EntityCard({
           {onPlay && (
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
               <button
+                type="button"
                 aria-label="Play"
                 className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:scale-105 transition-transform shadow-lg cursor-pointer"
                 onClick={(e) => {

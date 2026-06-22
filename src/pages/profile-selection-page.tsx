@@ -105,7 +105,14 @@ export default function ProfileSelectionPage() {
           {profiles.map((profile) => (
             <div
               key={profile.id}
+              role="button"
+              tabIndex={0}
               onClick={() => handleSelectProfile(profile.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  handleSelectProfile(profile.id);
+                }
+              }}
               className={`group relative flex flex-col items-center gap-2 w-28 cursor-pointer transition-all duration-300 ${
                 isManageMode ? "" : "hover:scale-105"
               }`}
@@ -128,18 +135,34 @@ export default function ProfileSelectionPage() {
                 {isManageMode && (
                   <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center gap-2 animate-in fade-in duration-200 backdrop-blur-[1px]">
                     <div
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
                         openEditDialog(profile);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          openEditDialog(profile);
+                        }
                       }}
                       className="p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
                     >
                       <Pencil className="w-4 h-4" />
                     </div>
                     <div
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeleteId(profile.id);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          setDeleteId(profile.id);
+                        }
                       }}
                       className="p-2 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-500 transition-colors"
                     >
@@ -157,7 +180,14 @@ export default function ProfileSelectionPage() {
           {/* Add Profile Button */}
           {!isManageMode && profiles.length < 5 && (
             <div
+              role="button"
+              tabIndex={0}
               onClick={openCreateDialog}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  openCreateDialog();
+                }
+              }}
               className="group flex flex-col items-center gap-2 w-28 cursor-pointer hover:scale-105 transition-all duration-300"
             >
               <div className="w-28 h-28 rounded-full bg-secondary/30 border-2 border-dashed border-muted-foreground/30 group-hover:border-primary/50 group-hover:bg-secondary/50 flex items-center justify-center transition-all duration-300">

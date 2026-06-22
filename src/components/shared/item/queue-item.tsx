@@ -72,7 +72,14 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
         <div
           ref={setNodeRef}
           style={style}
+          role="button"
+          tabIndex={0}
           onClick={handlePlayClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              handlePlayClick(e as unknown as React.MouseEvent);
+            }
+          }}
           className={`flex items-center gap-3 p-2 rounded-md group hover:bg-accent cursor-pointer ${
             isActive ? "bg-accent" : ""
           }`}
@@ -110,16 +117,22 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
             >
               {track.title}
             </p>
-            <p
-              className={`text-xs text-muted-foreground truncate ${
-                track.artist_id
-                  ? "hover:text-foreground cursor-pointer"
-                  : "text-muted-foreground"
-              }`}
-              onClick={handleArtistClick}
-            >
-              {track.artist || "Unknown Artist"}
-            </p>
+            {track.artist_id ? (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground truncate hover:text-foreground cursor-pointer text-left"
+                onClick={handleArtistClick}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    handleArtistClick(e as unknown as React.MouseEvent);
+                  }
+                }}
+              >
+                {track.artist}
+              </button>
+            ) : (
+              <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
+            )}
           </div>
           <div className="text-xs text-muted-foreground font-mono">
             {formatDuration(track.duration_ms)}

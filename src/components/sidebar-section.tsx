@@ -14,7 +14,14 @@ export function SidebarSection({ activeProfile, onProfileClick, onImport, isScan
     <div className="mt-2 pt-6 flex flex-col gap-6 w-16 shrink-0 h-full pb-32">
       <div
         id="user_profile"
+        role="button"
+        tabIndex={0}
         onClick={onProfileClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onProfileClick();
+          }
+        }}
         className={`aspect-square w-full shrink-0 rounded-lg overflow-hidden ${
           !activeProfile?.avatarPath &&
           (activeProfile?.color || "bg-gray-600")

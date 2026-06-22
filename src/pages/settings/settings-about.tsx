@@ -1,7 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { useUpdateStore } from "@/stores/update-store";
 import { useAudioStore } from "@/stores/audio-store";
-import { Loader2, CheckCircle2, Download, Info, FileText, ClipboardCopy } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle2,
+  Download,
+  Info,
+  FileText,
+  ClipboardCopy,
+} from "lucide-react";
 import { getVersion } from "@tauri-apps/api/app";
 import { useEffect, useState } from "react";
 import { UpdateDialog } from "@/components/dialogs/update-dialog";
@@ -94,6 +101,7 @@ export function SettingsAbout() {
               <Tooltip key={ch}>
                 <TooltipTrigger asChild>
                   <button
+                    type="button"
                     onClick={() => {
                       if (ch === "dev" && channel !== "dev") {
                         setWarningOpen(true);
@@ -105,7 +113,7 @@ export function SettingsAbout() {
                       "px-3 py-1.5 text-sm font-medium rounded-md transition-all capitalize",
                       channel === ch
                         ? "bg-accent text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {ch}
@@ -163,7 +171,7 @@ export function SettingsAbout() {
             {isReadyToInstall && !isDownloading && (
               <Button
                 onClick={handleInstall}
-                className="bg-green-600 hover:bg-green-700 text-white min-w-[140px] mb-2"
+                className="bg-green-600 hover:bg-green-700 text-white min-w-35 mb-2"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Install Update
@@ -178,7 +186,7 @@ export function SettingsAbout() {
                     variant="outline"
                     onClick={handleCheck}
                     disabled={isChecking}
-                    className="bg-secondary/50 border-border hover:bg-accent text-foreground min-w-[140px]"
+                    className="bg-secondary/50 border-border hover:bg-accent text-foreground min-w-35"
                   >
                     {isChecking ? (
                       <>

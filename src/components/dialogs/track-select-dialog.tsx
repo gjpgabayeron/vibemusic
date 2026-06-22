@@ -134,10 +134,13 @@ export function TrackSelectDialog({
                 return (
                   <div
                     key={track.id}
+                    role="button"
+                    tabIndex={0}
                     className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
                       isSelected ? "bg-accent" : "hover:bg-accent/50"
                     }`}
                     onClick={() => toggleSelection(track.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleSelection(track.id); }}
                   >
                     <img
                       src={

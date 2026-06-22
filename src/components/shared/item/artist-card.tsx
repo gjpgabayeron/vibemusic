@@ -77,7 +77,14 @@ const ArtistCard = memo(function ArtistCard({ artist }: ArtistCardProps) {
       onAddToQueue={handleAddToQueue}
     >
       <div
+        role="button"
+        tabIndex={0}
         onClick={() => openArtistDetail(artist.id)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            openArtistDetail(artist.id);
+          }
+        }}
         className="flex flex-col rounded-lg p-3 hover:bg-accent cursor-pointer transition-colors group gap-3"
       >
         {/* Artwork with play overlay */}
@@ -91,6 +98,7 @@ const ArtistCard = memo(function ArtistCard({ artist }: ArtistCardProps) {
           {/* Play overlay */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <button
+              type="button"
               className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:scale-105 transition-transform shadow-lg cursor-pointer"
               onClick={handlePlayClick}
             >

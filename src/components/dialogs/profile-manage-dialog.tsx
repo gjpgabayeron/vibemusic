@@ -182,13 +182,14 @@ export function ProfileManageDialog({
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs uppercase text-muted-foreground font-bold tracking-wider">
+            <span className="text-xs uppercase text-muted-foreground font-bold tracking-wider">
               Color
-            </label>
+            </span>
             <div className="flex gap-2">
               {AVATAR_COLORS.map((c) => (
                 <button
                   key={c}
+                  type="button"
                   aria-label={`Color ${c.replace("bg-", "").replace("-500", "")}`}
                   aria-pressed={color === c}
                   className={`w-8 h-8 rounded-full ${c} ${
