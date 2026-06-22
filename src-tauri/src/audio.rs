@@ -482,8 +482,6 @@ impl AudioWorker {
 
                     self.resample_buf.resize(self.secondary_buffer.len() * 2, 0.0);
                     self.duration_ms = self.secondary_decoder.as_ref().map(|d| d.duration_ms()).unwrap_or(0);
-                    self.device_sample_rate = self.secondary_decoder.as_ref().map(|d| d.sample_rate()).unwrap_or(44100);
-                    self.device_channels = self.secondary_decoder.as_ref().map(|d| d.channels() as u16).unwrap_or(2);
                     self.current_file_path = Some(path.to_string());
                     self.current_position_ms = 0;
                     self.samples_played = 0;
@@ -524,7 +522,6 @@ impl AudioWorker {
 
         let file_rate = decoder.sample_rate();
         self.duration_ms = decoder.duration_ms();
-        self.device_channels = decoder.channels() as u16;
         self.primary_buffer = buf;
         self.resample_buf.resize(self.primary_buffer.len() * 2, 0.0);
         self.recreate_cpal_stream(file_rate, self.device_channels);
@@ -599,7 +596,8 @@ impl AudioWorker {
         self.device_sample_rate = config.sample_rate.0;
         self.device_channels = config.channels;
 
-        let buffer_size = self.device_sample_rate as usize * self.device_channels as usize; // 1 sec
+        let min_buffer = self.primary_buffer.len() * 2;
+        let buffer_size = (self.device_sample_rate as usize * self.device_channels as usize).max(min_buffer);
         let rb = HeapRb::<f32>::new(buffer_size);
         let (producer, consumer) = rb.split();
         self.producer = Some(producer);
@@ -718,6 +716,10 @@ impl AudioWorker {
                         is_fading = true;
                     } else {
                         self.primary_decoder = self.secondary_decoder.take();
+                        if self.primary_buffer.len() != self.secondary_buffer.len() {
+                            self.primary_buffer.resize(self.secondary_buffer.len(), 0.0);
+                            self.resample_buf.resize(self.primary_buffer.len() * 2, 0.0);
+                        }
                         self.primary_buffer.copy_from_slice(&self.secondary_buffer);
                         self.crossfade_state = CrossfadeState::None;
                         continue;
