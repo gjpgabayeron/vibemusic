@@ -9,6 +9,7 @@ import AlbumCard from "@/components/shared/item/album-card";
 import { VirtualizedGrid } from "@/components/shared/virtualized-grid";
 import { PageHeader } from "@/components/shared/page-header";
 import { SortDropdown } from "@/components/shared/sort-dropdown";
+import { PageLayout } from "@/components/shared/page-layout";
 
 export default function AlbumsPage() {
   const albums = useLibraryStore((s) => s.albums);
@@ -58,7 +59,7 @@ export default function AlbumsPage() {
   }, [albums, albumsSortKey, albumsSortDirection, searchQuery]);
 
   return (
-    <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+    <PageLayout overflowHidden>
       <PageHeader title="Albums">
         <div className="relative w-64 mr-2">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -104,6 +105,6 @@ export default function AlbumsPage() {
           ) : null
         }
       />
-    </div>
+    </PageLayout>
   );
 }

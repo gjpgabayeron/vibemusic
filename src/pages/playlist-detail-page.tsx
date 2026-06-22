@@ -29,6 +29,7 @@ import { VirtualizedSortableList } from "@/components/shared/virtualized-sortabl
 import { TrackListHeader } from "@/components/shared/track-list-header";
 import { CompactPageHeader } from "@/components/shared/compact-page-header";
 import { formatDuration } from "@/lib/format";
+import { PageLayout } from "@/components/shared/page-layout";
 
 interface SortableTrackItemProps {
   track: Track;
@@ -209,7 +210,7 @@ export default function PlaylistDetailPage() {
   };
 
   return (
-    <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden relative">
+    <PageLayout overflowHidden className="relative">
       <CompactPageHeader
         ref={headerRef}
         title={playlist.name}
@@ -407,6 +408,6 @@ export default function PlaylistDetailPage() {
           ) : null
         }
       />
-    </div>
+    </PageLayout>
   );
 }

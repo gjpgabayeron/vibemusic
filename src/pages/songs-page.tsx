@@ -19,6 +19,7 @@ import { ArrowUpDown, Search, Filter } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useLibraryStore } from "@/stores/library-store";
 import { useIsPlayerVisible } from "@/stores/audio-store";
+import { PageLayout } from "@/components/shared/page-layout";
 
 type SortKey = "title" | "artist" | "date_added" | "duration";
 type SortDirection = "asc" | "desc";
@@ -106,7 +107,7 @@ export default function SongsPage() {
   const bottomPadding = isPlayerVisible ? 156 : 24;
 
   return (
-    <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+    <PageLayout overflowHidden>
       <div className="mt-8 flex items-center justify-between mb-6 px-2 gap-4">
         <h1 className="text-3xl font-bold">Songs</h1>
 
@@ -228,6 +229,6 @@ export default function SongsPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 }

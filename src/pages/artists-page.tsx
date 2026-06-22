@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { useSettingsStore } from "@/stores/settings-store";
 import { SortDropdown } from "@/components/shared/sort-dropdown";
 import { Input } from "@/components/ui/input";
+import { PageLayout } from "@/components/shared/page-layout";
 
 export default function ArtistsPage() {
   const artists = useLibraryStore((s) => s.artists);
@@ -57,7 +58,7 @@ export default function ArtistsPage() {
   }, [artists, artistsSortKey, artistsSortDirection, searchQuery]);
 
   return (
-    <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+    <PageLayout overflowHidden>
       <PageHeader title="Artists">
         <div className="relative w-64 mr-2">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -103,6 +104,6 @@ export default function ArtistsPage() {
           ) : null
         }
       />
-    </div>
+    </PageLayout>
   );
 }

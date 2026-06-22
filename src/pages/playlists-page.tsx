@@ -16,6 +16,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { SortDropdown } from "@/components/shared/sort-dropdown";
 import { Input } from "@/components/ui/input";
 import { VirtualizedGrid } from "@/components/shared/virtualized-grid";
+import { PageLayout } from "@/components/shared/page-layout";
 
 export default function PlaylistsPage() {
   // Use global store
@@ -97,7 +98,7 @@ export default function PlaylistsPage() {
   };
 
   return (
-    <div className="flex-1 min-w-0 h-full flex flex-col">
+    <PageLayout>
       <PageHeader title="Playlists">
         <div className="flex items-center justify-center gap-4">
           <div className="flex items-center">
@@ -195,6 +196,6 @@ export default function PlaylistsPage() {
           onOpenChange={(open) => !open && setEditingPlaylist(null)}
         />
       )}
-    </div>
+    </PageLayout>
   );
 }

@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { useLibraryStore } from "@/stores/library-store";
 import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
 import { useIsPlayerVisible } from "@/stores/audio-store";
+import { PageLayout } from "@/components/shared/page-layout";
 
 export default function HomePage() {
   const albums = useLibraryStore((s) => s.albums);
@@ -70,7 +71,7 @@ export default function HomePage() {
     recentTracks.length === 0;
 
   return (
-    <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+    <PageLayout overflowHidden>
       {/* Header */}
       <div className="mt-8 mb-6 px-2">
         <h1 className="text-4xl font-bold bg-linear-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
@@ -198,6 +199,6 @@ export default function HomePage() {
         isLoading={isDeleting}
         loadingText="Deleting..."
       />
-    </div>
+    </PageLayout>
   );
 }

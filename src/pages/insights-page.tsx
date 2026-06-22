@@ -12,6 +12,7 @@ import { ListeningHeatmap } from "@/components/insights/listening-heatmap";
 import { TrendIndicator } from "@/components/insights/trend-indicator";
 import { ListeningStreaks } from "@/components/insights/listening-streaks";
 import { WeeklyWrap } from "@/components/insights/weekly-wrap";
+import { PageLayout } from "@/components/shared/page-layout";
 
 function StatCard({
   icon: Icon,
@@ -106,7 +107,7 @@ export default function InsightsPage() {
 
   if (!data) {
     return (
-      <div className={cn("flex-1 min-w-0 h-full flex flex-col overflow-hidden p-8 space-y-6 animate-pulse", isPlayerVisible ? "pb-39" : "")}>
+      <PageLayout overflowHidden className={cn("p-8 space-y-6 animate-pulse", isPlayerVisible ? "pb-39" : "")}>
         <Skeleton className="h-12 w-48" />
         <Skeleton className="h-32 w-full rounded-xl" />
         <div className="grid grid-cols-4 gap-3">
@@ -124,7 +125,7 @@ export default function InsightsPage() {
           <Skeleton className="h-64 rounded-xl" />
           <Skeleton className="h-64 rounded-xl" />
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
@@ -133,7 +134,7 @@ export default function InsightsPage() {
   const rankedAlbums = data.top_albums.slice(0, ITEMS_VISIBLE);
 
   return (
-    <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+    <PageLayout overflowHidden>
       <div className="flex flex-col shrink-0">
         <PageHeader title="Insights">
           <TimeRangeSelector value={timeRange} onChange={setTimeRange} />
@@ -285,6 +286,6 @@ export default function InsightsPage() {
         </section>
 
       </div>
-    </div>
-  );
+      </PageLayout>
+    );
 }

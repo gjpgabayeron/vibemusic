@@ -27,6 +27,7 @@ import { TrackListRow } from "@/components/shared/item/track-list-row";
 import { VirtualizedList } from "@/components/shared/virtualized-list";
 import { TrackListHeader } from "@/components/shared/track-list-header";
 import { ScrollingText } from "@/components/shared/scrolling-text";
+import { PageLayout } from "@/components/shared/page-layout";
 
 export default function ArtistDetailPage() {
   const detailView = useDetailView();
@@ -135,7 +136,7 @@ export default function ArtistDetailPage() {
   };
 
   return (
-    <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden relative">
+    <PageLayout overflowHidden className="relative">
       <CompactPageHeader
         ref={headerRef}
         title={artist.name}
@@ -310,6 +311,6 @@ export default function ArtistDetailPage() {
           />
         )}
       />
-    </div>
+    </PageLayout>
   );
 }
