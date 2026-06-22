@@ -44,6 +44,12 @@ pub fn run() {
                             sql: include_str!("../migrations/002_add_playlist_artwork.sql"),
                             kind: tauri_plugin_sql::MigrationKind::Up,
                         },
+                        tauri_plugin_sql::Migration {
+                            version: 3,
+                            description: "add_track_title_index",
+                            sql: include_str!("../migrations/003_add_track_title_index.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
+                        },
                     ],
                 )
                 .build(),
