@@ -4,8 +4,12 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { useLibraryStore } from "@/stores/library-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { Input } from "@/components/ui/input";
-
-import AlbumCard from "@/components/shared/item/album-card";
+import { toast } from "sonner";
+import { logger } from "@/lib/logger";
+import { getAlbumTracks } from "@/lib/api";
+import { useAudioStore } from "@/stores/audio-store";
+import { useNavigationStore } from "@/stores/navigation-store";
+import { CardItem } from "@/components/shared/card-item";
 import { VirtualizedGrid } from "@/components/shared/virtualized-grid";
 import { PageHeader } from "@/components/shared/page-header";
 import { SortDropdown } from "@/components/shared/sort-dropdown";
@@ -18,6 +22,38 @@ export default function AlbumsPage() {
   const albumsSortDirection = useSettingsStore((s) => s.albumsSortDirection);
   const setAlbumsSort = useSettingsStore((s) => s.setAlbumsSort);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const openAlbumDetail = useNavigationStore((s) => s.openAlbumDetail);
+  const play = useAudioStore((s) => s.play);
+  const addToQueue = useAudioStore((s) => s.addToQueue);
+  const playNext = useAudioStore((s) => s.playNext);
+
+  const handlePlayAlbum = async (albumId: number, shuffle = false) => {
+    try {
+      const tracks = await getAlbumTracks(albumId);
+      if (tracks.length === 0) { toast.error("Album is empty"); return; }
+      const queue = shuffle ? [...tracks].sort(() => Math.random() - 0.5) : tracks;
+      play(queue[0], queue);
+    } catch (e) { logger.error("Failed to play album", e); }
+  };
+
+  const handlePlayNext = async (albumId: number) => {
+    try {
+      const tracks = await getAlbumTracks(albumId);
+      if (tracks.length === 0) return;
+      [...tracks].reverse().forEach((track) => playNext(track));
+      toast.success("Playing album next");
+    } catch (e) { logger.error("Failed to play album next", e); toast.error("Failed to play next"); }
+  };
+
+  const handleAddToQueue = async (albumId: number) => {
+    try {
+      const tracks = await getAlbumTracks(albumId);
+      if (tracks.length === 0) return;
+      tracks.forEach((track) => addToQueue(track));
+      toast.success("Added album to queue");
+    } catch (e) { logger.error("Failed to add album to queue", e); }
+  };
 
   const filteredAndSortedAlbums = useMemo(() => {
     let result = [...albums];
@@ -85,7 +121,25 @@ export default function AlbumsPage() {
 
       <VirtualizedGrid
         items={filteredAndSortedAlbums}
-        renderItem={(album) => <AlbumCard key={album.id} album={album} />}
+        renderItem={(album) => (
+  <CardItem
+    key={album.id}
+    title={album.title}
+    subtitle={album.artist_name || "Unknown Artist"}
+    tertiaryText={`${album.track_count} tracks`}
+    artworkSrc={album.artwork_path || undefined}
+    artworkType="album"
+    variant="portrait"
+    onClick={() => openAlbumDetail(album.id)}
+    onPlay={() => handlePlayAlbum(album.id)}
+    menuActions={{
+      onPlay: () => handlePlayAlbum(album.id),
+      onShuffle: () => handlePlayAlbum(album.id, true),
+      onPlayNext: () => handlePlayNext(album.id),
+      onAddToQueue: () => handleAddToQueue(album.id),
+    }}
+  />
+)}
         itemHeight={220}
         emptyState={
           !isLoading ? (

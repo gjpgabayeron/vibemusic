@@ -29,15 +29,20 @@ export function ArtistLinks({
       <span className={cn("truncate", className)} title={names.join(", ")}>
         {names.map((name, index) => (
           <span key={ids[index]}>
-            <span
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleArtistClick(e as unknown as React.MouseEvent, ids[index]); }}
+            <button
+              type="button"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ")
+                  handleArtistClick(
+                    e as unknown as React.MouseEvent,
+                    ids[index],
+                  );
+              }}
               onClick={(e) => handleArtistClick(e, ids[index])}
               className="hover:underline cursor-pointer hover:text-white transition-colors"
             >
               {name}
-            </span>
+            </button>
             {index < names.length - 1 && ", "}
           </span>
         ))}
@@ -48,20 +53,22 @@ export function ArtistLinks({
   // Fallback if no array data (shouldn't happen with new backend)
   if (fallbackName) {
     return (
-      <span
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && fallbackId) handleArtistClick(e as unknown as React.MouseEvent, fallbackId); }}
+      <button
+        type="button"
+        onKeyDown={(e) => {
+          if ((e.key === "Enter" || e.key === " ") && fallbackId)
+            handleArtistClick(e as unknown as React.MouseEvent, fallbackId);
+        }}
         className={cn(
           "truncate hover:underline cursor-pointer hover:text-white transition-colors",
-          className
+          className,
         )}
         onClick={(e) => {
           if (fallbackId) handleArtistClick(e, fallbackId);
         }}
       >
         {fallbackName}
-      </span>
+      </button>
     );
   }
 

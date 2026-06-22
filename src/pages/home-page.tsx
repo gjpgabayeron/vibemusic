@@ -1,20 +1,21 @@
 import { useState, useMemo } from "react";
 import { useNavigationStore } from "@/stores/navigation-store";
+import { useAudioStore, useCurrentTrack, usePlayerStatus, useIsPlayerVisible } from "@/stores/audio-store";
 import { logger } from "@/lib/logger";
-import MusicListItem from "@/components/shared/item/music-list";
-import AlbumCard from "@/components/shared/item/album-card";
-import PlaylistCard from "@/components/shared/item/playlist-card";
+import { toast } from "sonner";
+import { getAlbumTracks, getPlaylistTracks, Playlist } from "@/lib/api";
+import { CardItem } from "@/components/shared/card-item";
+import { ListItem } from "@/components/shared/list-item";
+import { ArtistLinks } from "@/components/shared/artist-links";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlaylistEditDialog } from "@/components/dialogs/playlist-edit-dialog";
 import { useScrollMask } from "@/hooks/use-scroll-mask";
-import { Playlist } from "@/lib/api";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { useLibraryStore } from "@/stores/library-store";
 import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
-import { useIsPlayerVisible } from "@/stores/audio-store";
 import { PageLayout } from "@/components/shared/page-layout";
 
 export default function HomePage() {
@@ -25,6 +26,77 @@ export default function HomePage() {
   const deletePlaylist = useLibraryStore((s) => s.deletePlaylist);
 
   const setPage = useNavigationStore((s) => s.setPage);
+
+  const currentTrack = useCurrentTrack();
+  const status = usePlayerStatus();
+  const play = useAudioStore((s) => s.play);
+  const pause = useAudioStore((s) => s.pause);
+  const resume = useAudioStore((s) => s.resume);
+  const addToQueue = useAudioStore((s) => s.addToQueue);
+  const playNext = useAudioStore((s) => s.playNext);
+  const openAlbumDetail = useNavigationStore((s) => s.openAlbumDetail);
+  const openPlaylistDetail = useNavigationStore((s) => s.openPlaylistDetail);
+  const addToPlaylist = useLibraryStore((s) => s.addToPlaylist);
+
+  const handlePlayAlbum = async (albumId: number, shuffle = false) => {
+    try {
+      const tracks = await getAlbumTracks(albumId);
+      if (tracks.length === 0) { toast.error("Album is empty"); return; }
+      const queue = shuffle ? [...tracks].sort(() => Math.random() - 0.5) : tracks;
+      play(queue[0], queue);
+    } catch (e) { logger.error("Failed to play album", e); }
+  };
+
+  const handlePlayNextAlbum = async (albumId: number) => {
+    try {
+      const tracks = await getAlbumTracks(albumId);
+      if (tracks.length === 0) return;
+      [...tracks].reverse().forEach((track) => playNext(track));
+      toast.success("Playing album next");
+    } catch (e) { logger.error("Failed to play album next", e); toast.error("Failed to play next"); }
+  };
+
+  const handleAddAlbumToQueue = async (albumId: number) => {
+    try {
+      const tracks = await getAlbumTracks(albumId);
+      if (tracks.length === 0) return;
+      tracks.forEach((track) => addToQueue(track));
+      toast.success("Added album to queue");
+    } catch (e) { logger.error("Failed to add album to queue", e); }
+  };
+
+  const handlePlayPlaylist = async (playlistId: number, shuffle = false) => {
+    try {
+      const tracks = await getPlaylistTracks(playlistId);
+      if (tracks.length === 0) { toast.error("Playlist is empty"); return; }
+      const queue = shuffle ? [...tracks].sort(() => Math.random() - 0.5) : tracks;
+      play(queue[0], queue);
+    } catch (e) { logger.error("Failed to play playlist", e); }
+  };
+
+  const handlePlayNextPlaylist = async (playlistId: number) => {
+    try {
+      const tracks = await getPlaylistTracks(playlistId);
+      if (tracks.length === 0) return;
+      [...tracks].reverse().forEach((track) => playNext(track));
+      toast.success("Playing playlist next");
+    } catch (e) { logger.error("Failed to play playlist next", e); toast.error("Failed to play next"); }
+  };
+
+  const handleAddPlaylistToQueue = async (playlistId: number) => {
+    try {
+      const tracks = await getPlaylistTracks(playlistId);
+      if (tracks.length === 0) return;
+      tracks.forEach((track) => addToQueue(track));
+      toast.success("Added playlist to queue");
+    } catch (e) { logger.error("Failed to add playlist to queue", e); }
+  };
+
+  const formatDuration = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
 
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
 
@@ -106,7 +178,22 @@ export default function HomePage() {
 
             <div className="flex overflow-x-auto gap-4 pb-4 -mx-2 px-2 scrollbar-none">
               {displayAlbums.map((album) => (
-                <AlbumCard key={album.id} album={album} size="compact" />
+                <CardItem
+                  key={album.id}
+                  title={album.title}
+                  subtitle={album.artist_name || "Unknown Artist"}
+                  artworkSrc={album.artwork_path || undefined}
+                  artworkType="album"
+                  variant="compact"
+                  onClick={() => openAlbumDetail(album.id)}
+                  onPlay={() => handlePlayAlbum(album.id)}
+                  menuActions={{
+                    onPlay: () => handlePlayAlbum(album.id),
+                    onShuffle: () => handlePlayAlbum(album.id, true),
+                    onPlayNext: () => handlePlayNextAlbum(album.id),
+                    onAddToQueue: () => handleAddAlbumToQueue(album.id),
+                  }}
+                />
               ))}
             </div>
           </section>
@@ -127,13 +214,24 @@ export default function HomePage() {
             </div>
 
             <div className="flex overflow-x-auto gap-4 pb-4 -mx-2 px-2 scrollbar-none">
-              {displayPlaylists.map((playlist) => (
-                <PlaylistCard
-                  key={playlist.id}
-                  playlist={playlist}
-                  size="compact"
-                  onEdit={setEditingPlaylist}
-                  onDelete={handleDeleteRequest}
+              {displayPlaylists.map((p) => (
+                <CardItem
+                  key={p.id}
+                  title={p.name}
+                  subtitle={`${p.track_count} tracks`}
+                  artworkSrc={p.artwork_path || undefined}
+                  artworkType="playlist"
+                  variant="compact"
+                  onClick={() => openPlaylistDetail(p.id)}
+                  onPlay={() => handlePlayPlaylist(p.id)}
+                  menuActions={{
+                    onPlay: () => handlePlayPlaylist(p.id),
+                    onShuffle: () => handlePlayPlaylist(p.id, true),
+                    onPlayNext: () => handlePlayNextPlaylist(p.id),
+                    onAddToQueue: () => handleAddPlaylistToQueue(p.id),
+                    onEdit: () => setEditingPlaylist(p),
+                    onDelete: () => handleDeleteRequest(p),
+                  }}
                 />
               ))}
             </div>
@@ -158,10 +256,46 @@ export default function HomePage() {
 
             <div className="flex flex-col gap-1">
               {recentTracks.map((track) => (
-                <MusicListItem
+                <ListItem
                   key={track.id}
-                  track={track}
-                  context={recentTracks}
+                  title={track.title}
+                  subtitle={
+                    <ArtistLinks
+                      names={track.artist_names}
+                      ids={track.artist_ids}
+                      fallbackName={track.artist}
+                      fallbackId={track.artist_id}
+                    />
+                  }
+                  artworkSrc={track.artwork_path || undefined}
+                  showArtwork
+                  active={currentTrack?.id === track.id}
+                  isPlaying={currentTrack?.id === track.id && status === "playing"}
+                  onClick={() => {
+                    if (currentTrack?.id === track.id) {
+                      if (status === "playing") pause(); else resume();
+                    } else {
+                      play(track);
+                    }
+                  }}
+                  trailing={
+                    <p className="text-muted-foreground text-xs font-normal tabular-nums">
+                      {formatDuration(track.duration_ms)}
+                    </p>
+                  }
+                  menuActions={{
+                    onPlay: () => {
+                      if (currentTrack?.id === track.id) {
+                        if (status === "playing") pause(); else resume();
+                      } else {
+                        play(track);
+                      }
+                    },
+                    onPlayNext: () => playNext(track),
+                    onAddToQueue: () => addToQueue(track),
+                    onAddToPlaylist: (playlistId) => addToPlaylist(playlistId, track.id),
+                    playlists: playlists.map((p) => ({ id: p.id, name: p.name })),
+                  }}
                 />
               ))}
             </div>

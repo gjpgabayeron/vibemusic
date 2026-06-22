@@ -132,10 +132,9 @@ export function TrackSelectDialog({
               {filteredTracks.map((track) => {
                 const isSelected = selectedTrackIds.has(track.id);
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={track.id}
-                    role="button"
-                    tabIndex={0}
                     className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
                       isSelected ? "bg-accent" : "hover:bg-accent/50"
                     }`}
@@ -172,7 +171,7 @@ export function TrackSelectDialog({
                     >
                       <Check size={12} strokeWidth={3} />
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>

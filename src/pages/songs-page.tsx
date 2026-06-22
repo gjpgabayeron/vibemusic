@@ -1,7 +1,13 @@
 import { useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
-import MusicListItem from "@/components/shared/item/music-list";
+import { ListItem } from "@/components/shared/list-item";
+import {
+  useCurrentTrack,
+  usePlayerStatus,
+  useAudioStore,
+} from "@/stores/audio-store";
+import { ArtistLinks } from "@/components/shared/artist-links";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useScrollMask } from "@/hooks/use-scroll-mask";
@@ -26,7 +32,13 @@ type SortKey = "title" | "artist" | "date_added" | "duration";
 type SortDirection = "asc" | "desc";
 
 // Item height for virtualization (matches MusicListItem padding + content)
-const ITEM_HEIGHT = 56;
+const ITEM_HEIGHT = 60;
+
+const formatDuration = (ms: number) => {
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+};
 
 export default function SongsPage() {
   const tracks = useLibraryStore((s) => s.tracks);
@@ -37,6 +49,16 @@ export default function SongsPage() {
   const songsSortKey = useSettingsStore((s) => s.songsSortKey);
   const songsSortDirection = useSettingsStore((s) => s.songsSortDirection);
   const setSongsSort = useSettingsStore((s) => s.setSongsSort);
+
+  const currentTrack = useCurrentTrack();
+  const status = usePlayerStatus();
+  const play = useAudioStore((s) => s.play);
+  const pause = useAudioStore((s) => s.pause);
+  const resume = useAudioStore((s) => s.resume);
+  const addToQueue = useAudioStore((s) => s.addToQueue);
+  const playNext = useAudioStore((s) => s.playNext);
+  const playlists = useLibraryStore((s) => s.playlists);
+  const addToPlaylist = useLibraryStore((s) => s.addToPlaylist);
 
   // Ref for the scrollable container
   const parentRef = useRef<HTMLDivElement>(null);
@@ -179,8 +201,8 @@ export default function SongsPage() {
 
       <div
         ref={parentRef}
-        className={`flex-1 overflow-y-auto px-2 space-y-1 custom-scrollbar scroll-mask-y ${
-          displayedTracks.length === 0 ? "flex flex-col" : ""
+        className={`flex-1 overflow-y-auto px-2 custom-scrollbar scroll-mask-y ${
+          displayedTracks.length === 0 ? "flex flex-col gap-1" : ""
         }`}
       >
         {displayedTracks.length === 0 ? (
@@ -200,10 +222,9 @@ export default function SongsPage() {
           ))
         ) : (
           <div
+            className="relative w-full"
             style={{
-              height: `${virtualizer.getTotalSize() + bottomPadding}px`, // Dynamic padding for controller
-              width: "100%",
-              position: "relative",
+              height: `${virtualizer.getTotalSize() + bottomPadding}px`,
               transition: "height 300ms ease-in-out",
             }}
           >
@@ -212,16 +233,62 @@ export default function SongsPage() {
               return (
                 <div
                   key={track.id}
+                  className="absolute top-0 left-0 w-full"
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
                     height: `${virtualItem.size}px`,
                     transform: `translateY(${virtualItem.start}px)`,
                   }}
                 >
-                  <MusicListItem track={track} />
+                  <ListItem
+                    title={track.title}
+                    subtitle={
+                      <ArtistLinks
+                        names={track.artist_names}
+                        ids={track.artist_ids}
+                        fallbackName={track.artist}
+                        fallbackId={track.artist_id}
+                      />
+                    }
+                    artworkSrc={
+                      track.artwork_path ? track.artwork_path : undefined
+                    }
+                    showArtwork
+                    active={currentTrack?.id === track.id}
+                    isPlaying={
+                      currentTrack?.id === track.id && status === "playing"
+                    }
+                    onClick={() => {
+                      if (currentTrack?.id === track.id) {
+                        if (status === "playing") pause();
+                        else resume();
+                      } else {
+                        play(track);
+                      }
+                    }}
+                    trailing={
+                      <p className="text-muted-foreground text-xs font-normal tabular-nums">
+                        {formatDuration(track.duration_ms)}
+                      </p>
+                    }
+                    menuActions={{
+                      onPlay: () => {
+                        if (currentTrack?.id === track.id) {
+                          if (status === "playing") pause();
+                          else resume();
+                        } else {
+                          play(track);
+                        }
+                      },
+                      onPlayNext: () => playNext(track),
+                      onAddToQueue: () => addToQueue(track),
+                      onAddToPlaylist: (playlistId) =>
+                        addToPlaylist(playlistId, track.id),
+                      playlists: playlists.map((p) => ({
+                        id: p.id,
+                        name: p.name,
+                      })),
+                    }}
+                  />
                 </div>
               );
             })}

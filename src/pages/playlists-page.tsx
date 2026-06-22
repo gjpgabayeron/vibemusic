@@ -3,10 +3,13 @@ import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
 import { Plus, ListMusic, Search } from "lucide-react";
 import { useLibraryStore } from "@/stores/library-store";
-import { Playlist } from "@/lib/api";
+import { useAudioStore } from "@/stores/audio-store";
+import { useNavigationStore } from "@/stores/navigation-store";
+import { Playlist, getPlaylistTracks } from "@/lib/api";
+import { toast } from "sonner";
+import { CardItem } from "@/components/shared/card-item";
 import { PlaylistCreateDialog } from "@/components/dialogs/playlist-create-dialog";
 import { GridSkeleton } from "@/components/shared/grid-skeleton";
-import PlaylistCard from "@/components/shared/item/playlist-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -76,6 +79,37 @@ export default function PlaylistsPage() {
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const openPlaylistDetail = useNavigationStore((s) => s.openPlaylistDetail);
+  const play = useAudioStore((s) => s.play);
+  const addToQueue = useAudioStore((s) => s.addToQueue);
+  const playNext = useAudioStore((s) => s.playNext);
+
+  const handlePlayPlaylist = async (playlistId: number, shuffle = false) => {
+    try {
+      const tracks = await getPlaylistTracks(playlistId);
+      if (tracks.length === 0) { toast.error("Playlist is empty"); return; }
+      const queue = shuffle ? [...tracks].sort(() => Math.random() - 0.5) : tracks;
+      play(queue[0], queue);
+    } catch (e) { logger.error("Failed to play playlist", e); }
+  };
+
+  const handlePlayNext = async (playlistId: number) => {
+    try {
+      const tracks = await getPlaylistTracks(playlistId);
+      if (tracks.length === 0) return;
+      [...tracks].reverse().forEach((track) => playNext(track));
+      toast.success("Playing playlist next");
+    } catch (e) { logger.error("Failed to play playlist next", e); toast.error("Failed to play next"); }
+  };
+
+  const handleAddToQueue = async (playlistId: number) => {
+    try {
+      const tracks = await getPlaylistTracks(playlistId);
+      if (tracks.length === 0) return;
+      tracks.forEach((track) => addToQueue(track));
+      toast.success("Added playlist to queue");
+    } catch (e) { logger.error("Failed to add playlist to queue", e); }
+  };
 
 
   const confirmDelete = async () => {
@@ -163,11 +197,23 @@ export default function PlaylistsPage() {
         <VirtualizedGrid
           items={filteredAndSortedPlaylists}
           renderItem={(playlist) => (
-            <PlaylistCard
+            <CardItem
               key={playlist.id}
-              playlist={playlist}
-              onEdit={setEditingPlaylist}
-              onDelete={handleDeleteRequest}
+              title={playlist.name}
+              subtitle={`${playlist.track_count} tracks`}
+              artworkSrc={playlist.artwork_path || undefined}
+              artworkType="playlist"
+              variant="portrait"
+              onClick={() => openPlaylistDetail(playlist.id)}
+              onPlay={() => handlePlayPlaylist(playlist.id)}
+              menuActions={{
+                onPlay: () => handlePlayPlaylist(playlist.id),
+                onShuffle: () => handlePlayPlaylist(playlist.id, true),
+                onPlayNext: () => handlePlayNext(playlist.id),
+                onAddToQueue: () => handleAddToQueue(playlist.id),
+                onEdit: () => setEditingPlaylist(playlist),
+                onDelete: () => handleDeleteRequest(playlist),
+              }}
             />
           )}
           itemHeight={220}

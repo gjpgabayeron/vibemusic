@@ -1,10 +1,11 @@
 import { Track } from "@/lib/api";
-import { useCurrentTrack } from "@/stores/audio-store";
+import { useCurrentTrack, useAudioStore } from "@/stores/audio-store";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import MusicListItem from "@/components/shared/item/music-list";
+import { ListItem } from "@/components/shared/list-item";
+import { ArtistLinks } from "@/components/shared/artist-links";
 
 interface SortableTrackItemProps {
   track: Track;
@@ -12,8 +13,16 @@ interface SortableTrackItemProps {
   onRemove: (e: React.MouseEvent) => void;
 }
 
+const formatDuration = (ms: number) => {
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+};
+
 export function SortableTrackItem({ track, index, onRemove }: SortableTrackItemProps) {
   const currentTrack = useCurrentTrack();
+  const play = useAudioStore((s) => s.play);
+  const pause = useAudioStore((s) => s.pause);
   const {
     attributes,
     listeners,
@@ -56,18 +65,43 @@ export function SortableTrackItem({ track, index, onRemove }: SortableTrackItemP
       </div>
 
       <div className="flex-1 min-w-0">
-        <MusicListItem track={track} disableHover />
+        <ListItem
+          title={track.title}
+          subtitle={
+            <ArtistLinks
+              names={track.artist_names}
+              ids={track.artist_ids}
+              fallbackName={track.artist}
+              fallbackId={track.artist_id}
+            />
+          }
+          artworkSrc={track.artwork_path || undefined}
+          showArtwork
+          active={isCurrentTrack}
+          isPlaying={isCurrentTrack}
+          trailing={
+            <div className="flex items-center gap-3">
+              <span className="tabular-nums text-xs">{formatDuration(track.duration_ms)}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-destructive"
+                onClick={onRemove}
+                title="Remove from playlist"
+              >
+                <Trash2 size={16} />
+              </Button>
+            </div>
+          }
+          onClick={() => {
+            if (isCurrentTrack) {
+              pause();
+            } else {
+              play(track);
+            }
+          }}
+        />
       </div>
-
-      <Button
-        variant="ghost"
-        size="icon"
-        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-        onClick={onRemove}
-        title="Remove from playlist"
-      >
-        <Trash2 size={16} />
-      </Button>
     </div>
   );
 }

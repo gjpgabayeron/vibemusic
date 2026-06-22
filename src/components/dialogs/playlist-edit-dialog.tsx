@@ -167,9 +167,8 @@ export function PlaylistEditDialog({
           <div className="flex flex-col items-center gap-4">
             {/* Image Preview / Selection */}
             <div className="relative group">
-              <div
-                role="button"
-                tabIndex={0}
+              <button
+                type="button"
                 aria-label="Select playlist cover image"
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSelectImage(); }}
                 className="w-40 h-40 rounded-lg bg-card flex flex-col items-center justify-center cursor-pointer overflow-hidden border border-dashed border-border hover:border-foreground/50 transition-colors"
@@ -198,7 +197,7 @@ export function PlaylistEditDialog({
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <Pencil size={24} className="text-white" />
                 </div>
-              </div>
+              </button>
             </div>
           </div>
 

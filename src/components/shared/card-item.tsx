@@ -4,16 +4,18 @@ import { cn } from "@/lib/utils";
 import { Play } from "lucide-react";
 import { ArtworkImage } from "@/components/shared/artwork-image";
 import { MediaContextMenu } from "@/components/shared/media-context-menu";
+import { Button } from "@/components/ui/button";
+import artistPlaceholderArt from "@/assets/artist-placeholder-art.png";
 
 const cardVariants = cva(
-  "flex flex-col cursor-pointer transition-colors group relative",
+  "flex flex-col cursor-pointer transition-colors group relative debug-card-item",
   {
     variants: {
       variant: {
         portrait: "rounded-lg p-3 hover:bg-accent",
         landscape: "flex-row gap-4 p-2 hover:bg-accent rounded-md items-center",
         compact: "w-40 shrink-0 space-y-3",
-        circle: "rounded-lg p-3 hover:bg-accent items-center", // For artists
+        circle: "rounded-lg p-3 hover:bg-accent items-center",
       },
     },
     defaultVariants: {
@@ -36,31 +38,34 @@ const imageVariants = cva("relative bg-card overflow-hidden shadow-sm", {
   },
 });
 
-interface EntityCardProps
+interface CardItemProps
   extends
-    Omit<React.HTMLAttributes<HTMLDivElement>, "contextMenu">,
+    Omit<React.ComponentProps<"button">, "contextMenu">,
     VariantProps<typeof cardVariants> {
   title: string;
   subtitle?: string;
   tertiaryText?: string;
   artworkSrc?: string;
+  artworkType?: "album" | "artist" | "playlist";
   rank?: number;
   onPlay?: () => void;
   onClick?: () => void;
-  /** Context menu actions */
   menuActions?: {
     onPlay?: () => void;
     onShuffle?: () => void;
     onPlayNext?: () => void;
     onAddToQueue?: () => void;
+    onEdit?: () => void;
+    onDelete?: () => void;
   };
 }
 
-export const EntityCard = memo(function EntityCard({
+export const CardItem = memo(function CardItem({
   title,
   subtitle,
   tertiaryText,
   artworkSrc,
+  artworkType = "album",
   variant,
   rank,
   className,
@@ -68,40 +73,71 @@ export const EntityCard = memo(function EntityCard({
   onClick,
   menuActions,
   ...props
-}: EntityCardProps) {
+}: CardItemProps) {
+  const isCircle = variant === "circle";
+  const isCompact = variant === "compact";
+
+  const artwork = artworkSrc ? (
+    <ArtworkImage
+      src={artworkSrc}
+      alt={title}
+      className="group-hover:scale-[1.02] transition-transform duration-300"
+    />
+  ) : artworkType === "playlist" ? (
+    <div className="w-full h-full bg-linear-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
+      <span className="text-4xl font-bold text-muted-foreground select-none group-hover:scale-[1.02] transition-transform">
+        {title.slice(0, 2).toUpperCase()}
+      </span>
+    </div>
+  ) : artworkType === "artist" ? (
+    <ArtworkImage
+      src={undefined}
+      alt={title}
+      fallback={artistPlaceholderArt}
+      className="group-hover:scale-[1.02] transition-transform duration-300"
+    />
+  ) : (
+    <ArtworkImage
+      src={undefined}
+      alt={title}
+      className="group-hover:scale-[1.02] transition-transform duration-300"
+    />
+  );
+
   const CardContent = (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       className={cn(cardVariants({ variant, className }))}
       onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          onClick?.();
-        }
-      }}
       {...props}
     >
       <div className={cn(imageVariants({ variant }), "overflow-visible")}>
-        <div className="relative w-full h-full rounded-[inherit] overflow-hidden">
-          <ArtworkImage
-            src={artworkSrc}
-            alt={title}
-            className="group-hover:scale-[1.02] transition-transform duration-300"
-          />
+        <div
+          className={cn(
+            "relative w-full h-full overflow-hidden",
+            isCircle ? "rounded-full" : "rounded-[inherit]",
+          )}
+        >
+          {artwork}
           {onPlay && (
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 aria-label="Play"
-                className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:scale-105 transition-transform shadow-lg cursor-pointer"
+                className="rounded-full bg-primary text-primary-foreground hover:scale-105 shadow-lg cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
                   onPlay();
                 }}
               >
-                <Play fill="currentColor" className="ml-1" size={20} />
-              </button>
+                <Play
+                  fill="currentColor"
+                  className="ml-1"
+                  size={isCompact ? 20 : 24}
+                />
+              </Button>
             </div>
           )}
         </div>
@@ -112,25 +148,22 @@ export const EntityCard = memo(function EntityCard({
         )}
       </div>
 
-      <div
-        className={cn(
-          "min-w-0 flex-1 w-full",
-          variant === "circle" && "text-center",
-        )}
-      >
-        <div className="font-bold text-sm truncate leading-tight">{title}</div>
+      <div className={cn("min-w-0 flex-1 w-full", isCircle && "text-center")}>
+        <div className="font-bold text-sm truncate leading-tight text-left">
+          {title}
+        </div>
         {subtitle && (
-          <div className="text-muted-foreground text-xs truncate mt-0.5">
+          <div className="text-muted-foreground text-xs truncate mt-0.5 text-left">
             {subtitle}
           </div>
         )}
-        {tertiaryText && variant !== "compact" && (
-          <div className="text-muted-foreground text-[10px] truncate mt-0.5">
+        {tertiaryText && !isCompact && (
+          <div className="text-muted-foreground text-[10px] truncate mt-0.5 text-left">
             {tertiaryText}
           </div>
         )}
       </div>
-    </div>
+    </button>
   );
 
   if (menuActions) {

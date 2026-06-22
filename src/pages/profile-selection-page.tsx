@@ -103,10 +103,9 @@ export default function ProfileSelectionPage() {
       >
         <div className="min-h-full flex flex-wrap content-center justify-center gap-y-6 gap-x-4 pb-4 pt-2">
           {profiles.map((profile) => (
-            <div
+            <button
+              type="button"
               key={profile.id}
-              role="button"
-              tabIndex={0}
               onClick={() => handleSelectProfile(profile.id)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -134,9 +133,8 @@ export default function ProfileSelectionPage() {
 
                 {isManageMode && (
                   <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center gap-2 animate-in fade-in duration-200 backdrop-blur-[1px]">
-                    <div
-                      role="button"
-                      tabIndex={0}
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         openEditDialog(profile);
@@ -150,10 +148,9 @@ export default function ProfileSelectionPage() {
                       className="p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
                     >
                       <Pencil className="w-4 h-4" />
-                    </div>
-                    <div
-                      role="button"
-                      tabIndex={0}
+                    </button>
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeleteId(profile.id);
@@ -167,21 +164,20 @@ export default function ProfileSelectionPage() {
                       className="p-2 rounded-full bg-destructive/20 hover:bg-destructive/40 text-destructive transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </div>
+                    </button>
                   </div>
                 )}
               </div>
               <span className="text-foreground/80 group-hover:text-foreground text-sm font-medium truncate max-w-full tracking-tight transition-colors">
                 {profile.name}
               </span>
-            </div>
+            </button>
           ))}
 
           {/* Add Profile Button */}
           {!isManageMode && profiles.length < 5 && (
-            <div
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               onClick={openCreateDialog}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -196,7 +192,7 @@ export default function ProfileSelectionPage() {
               <span className="text-muted-foreground group-hover:text-foreground text-sm font-medium tracking-tight transition-colors">
                 Add Profile
               </span>
-            </div>
+            </button>
           )}
         </div>
       </div>

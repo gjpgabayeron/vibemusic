@@ -26,11 +26,12 @@ export default function LyricsPanel() {
 
   // Cache lyrics data
   const lyricsCacheRef = useRef<Map<string, LyricsData> | null>(null);
-  if (lyricsCacheRef.current === null) lyricsCacheRef.current = new Map<string, LyricsData>();
+  if (lyricsCacheRef.current === null)
+    lyricsCacheRef.current = new Map<string, LyricsData>();
   const lyricsCache = lyricsCacheRef.current;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const activeLineRef = useRef<HTMLDivElement>(null);
+  const activeLineRef = useRef<HTMLButtonElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
 
   // Fetch lyrics when track changes
@@ -186,11 +187,10 @@ export default function LyricsPanel() {
 
               // SYNCED STYLE (Karaoke)
               return (
-                <div
+                <button
+                  type="button"
                   key={index}
                   ref={isActive ? activeLineRef : null}
-                  role="button"
-                  tabIndex={0}
                   onClick={() => {
                     if (line.timestamp_ms !== null) {
                       seek(line.timestamp_ms);
@@ -198,7 +198,10 @@ export default function LyricsPanel() {
                     }
                   }}
                   onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && line.timestamp_ms !== null) {
+                    if (
+                      (e.key === "Enter" || e.key === " ") &&
+                      line.timestamp_ms !== null
+                    ) {
                       seek(line.timestamp_ms);
                       setAutoScroll(true);
                     }
@@ -208,14 +211,14 @@ export default function LyricsPanel() {
                     line.timestamp_ms !== null &&
                       "cursor-pointer hover:bg-white/5",
                     isActive
-                      ? "text-white font-black scale-105 bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.1)] backdrop-blur-sm border-l-4 border-primary pl-6"
+                      ? "text-white font-black scale-105 bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.1)] backdrop-blur-sm pl-6"
                       : isPast
-                      ? "text-muted-foreground/30 blur-[0.5px] scale-95"
-                      : "text-muted-foreground/70 scale-100"
+                        ? "text-muted-foreground/30 blur-[0.5px] scale-95"
+                        : "text-muted-foreground/70 scale-100",
                   )}
                 >
                   {line.text || "♪"}
-                </div>
+                </button>
               );
             })}
           </div>

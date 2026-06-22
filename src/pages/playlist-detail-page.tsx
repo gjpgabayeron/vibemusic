@@ -260,9 +260,9 @@ export default function PlaylistDetailPage() {
             {/* Header Row - Only show if has tracks */}
             {tracks.length > 0 && (
               <TrackListHeader
-                showDuration={false}
+                showDuration
                 indexWidth="w-8"
-                className="gap-4 px-4"
+                className="gap-4 px-2"
               />
             )}
           </div>

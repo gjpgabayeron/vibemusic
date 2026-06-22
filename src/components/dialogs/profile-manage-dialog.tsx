@@ -142,9 +142,8 @@ export function ProfileManageDialog({
       >
         <div className="space-y-6 pt-4">
           <div className="flex items-center gap-4">
-            <div
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               aria-label="Upload avatar"
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleAvatarUpload(); }}
               className={`relative w-20 h-20 rounded-md overflow-hidden flex items-center justify-center text-xl font-bold shrink-0 group cursor-pointer ${
@@ -165,7 +164,7 @@ export function ProfileManageDialog({
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera className="w-6 h-6 text-white" />
               </div>
-            </div>
+            </button>
 
             <div className="flex flex-col gap-2 flex-1">
               <Input

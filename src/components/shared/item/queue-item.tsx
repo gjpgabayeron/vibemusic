@@ -69,11 +69,10 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
   return (
     <ContextMenu>
       <ContextMenuTrigger>
-        <div
+        <button
+          type="button"
           ref={setNodeRef}
           style={style}
-          role="button"
-          tabIndex={0}
           onClick={handlePlayClick}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -137,7 +136,7 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
           <div className="text-xs text-muted-foreground font-mono">
             {formatDuration(track.duration_ms)}
           </div>
-        </div>
+        </button>
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onSelect={() => removeFromQueue(track.id)}>

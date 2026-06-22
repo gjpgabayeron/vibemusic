@@ -14,19 +14,19 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   ArrowLeft,
   Shuffle,
-  Play,
   ChevronLeft,
   ChevronRight,
   User,
 } from "lucide-react";
-import { useAudioStore } from "@/stores/audio-store";
+import { CardItem } from "@/components/shared/card-item";
+import { useAudioStore, useCurrentTrack, usePlayerStatus } from "@/stores/audio-store";
 import { Button } from "@/components/ui/button";
 import artistPlaceholderArt from "@/assets/artist-placeholder-art.png";
 import { CompactPageHeader } from "@/components/shared/compact-page-header";
-import { TrackListRow } from "@/components/shared/item/track-list-row";
+import { ListItem } from "@/components/shared/list-item";
+import { ArtistLinks } from "@/components/shared/artist-links";
 import { VirtualizedList } from "@/components/shared/virtualized-list";
 import { TrackListHeader } from "@/components/shared/track-list-header";
-import { ScrollingText } from "@/components/shared/scrolling-text";
 import { PageLayout } from "@/components/shared/page-layout";
 
 export default function ArtistDetailPage() {
@@ -34,12 +34,20 @@ export default function ArtistDetailPage() {
   const goBack = useNavigationStore((s) => s.goBack);
   const openAlbumDetail = useNavigationStore((s) => s.openAlbumDetail);
   const play = useAudioStore((s) => s.play);
+  const currentTrack = useCurrentTrack();
+  const status = usePlayerStatus();
   const headerRef = useRef<HTMLDivElement>(null);
 
   const [artist, setArtist] = useState<Artist | null>(null);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const formatDuration = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
 
   // Scroll ref for albums row
   const albumsScrollRef = useRef<HTMLDivElement>(null);
@@ -49,16 +57,20 @@ export default function ArtistDetailPage() {
       setIsLoading(true);
       (async () => {
         try {
-          const [artistResult, albumsResult, tracksResult] = await Promise.allSettled([
-            getArtistById(detailView.id),
-            getArtistAlbums(detailView.id),
-            getArtistTracks(detailView.id),
-          ]);
-          if (artistResult.status === "fulfilled") setArtist(artistResult.value);
+          const [artistResult, albumsResult, tracksResult] =
+            await Promise.allSettled([
+              getArtistById(detailView.id),
+              getArtistAlbums(detailView.id),
+              getArtistTracks(detailView.id),
+            ]);
+          if (artistResult.status === "fulfilled")
+            setArtist(artistResult.value);
           else logger.error("Failed to load artist", artistResult.reason);
-          if (albumsResult.status === "fulfilled") setAlbums(albumsResult.value);
+          if (albumsResult.status === "fulfilled")
+            setAlbums(albumsResult.value);
           else logger.error("Failed to load albums", albumsResult.reason);
-          if (tracksResult.status === "fulfilled") setTracks(tracksResult.value);
+          if (tracksResult.status === "fulfilled")
+            setTracks(tracksResult.value);
           else logger.error("Failed to load tracks", tracksResult.reason);
         } finally {
           setIsLoading(false);
@@ -82,8 +94,7 @@ export default function ArtistDetailPage() {
     }
   };
 
-  const handlePlayAlbum = async (e: React.MouseEvent, albumId: number) => {
-    e.stopPropagation();
+  const handlePlayAlbum = async (albumId: number) => {
     try {
       const albumTracks = await getAlbumTracks(albumId);
       if (albumTracks.length > 0) {
@@ -242,56 +253,16 @@ export default function ArtistDetailPage() {
                   className="flex gap-4 overflow-x-auto pb-4 no-scrollbar scroll-smooth"
                 >
                   {albums.map((album) => (
-                    <div
-                      key={album.id}
-                      className="flex flex-col w-40 min-w-40 gap-2"
-                    >
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        className="relative aspect-square w-full rounded-lg overflow-hidden group cursor-pointer shadow-md"
-                        onClick={(e) => handlePlayAlbum(e, album.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            handlePlayAlbum(e as unknown as React.MouseEvent, album.id);
-                          }
-                        }}
-                      >
-                        <img
-                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                          src={
-                            album.artwork_path
-                              ? convertFileSrc(album.artwork_path)
-                              : artistPlaceholderArt
-                          }
-                          alt={album.title}
-                          onError={(e) => {
-                            e.currentTarget.src = artistPlaceholderArt;
-                          }}
-                        />
-                        {/* Hover Overlay */}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <div className="bg-primary rounded-full p-3 text-primary-foreground transform scale-90 group-hover:scale-100 transition-transform shadow-lg">
-                            <Play
-                              size={24}
-                              fill="currentColor"
-                              className="ml-1"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="min-w-0 flex flex-col gap-0.5">
-                        <ScrollingText
-                          onClick={() => handleAlbumClick(album.id)}
-                          className="text-foreground text-sm font-bold cursor-pointer w-full text-left"
-                        >
-                          {album.title}
-                        </ScrollingText>
-                        <p className="text-muted-foreground text-xs line-clamp-1">
-                          {album.year || "Unknown Year"}
-                        </p>
-                      </div>
+                    <div key={album.id} className="w-40 min-w-40">
+                      <CardItem
+                        title={album.title}
+                        subtitle={album.year ? String(album.year) : "Unknown Year"}
+                        artworkSrc={album.artwork_path || undefined}
+                        artworkType="album"
+                        variant="compact"
+                        onClick={() => handleAlbumClick(album.id)}
+                        onPlay={() => handlePlayAlbum(album.id)}
+                      />
                     </div>
                   ))}
                 </div>
@@ -309,14 +280,30 @@ export default function ArtistDetailPage() {
             )}
           </div>
         }
-        renderItem={(track, index) => (
-          <TrackListRow
-            key={track.id}
-            track={track}
-            index={index + 1}
-            showArtwork={true}
-          />
-        )}
+        renderItem={(track, index) => {
+          const isCurrentTrack = currentTrack?.id === track.id;
+          return (
+            <ListItem
+              key={track.id}
+              title={track.title}
+              subtitle={
+                <ArtistLinks
+                  names={track.artist_names}
+                  ids={track.artist_ids?.length ? track.artist_ids : track.artist_id ? [track.artist_id] : []}
+                  fallbackName={track.artist}
+                  fallbackId={track.artist_id}
+                />
+              }
+              artworkSrc={track.artwork_path || undefined}
+              index={index + 1}
+              variant="indexed"
+              showArtwork
+              active={isCurrentTrack}
+              isPlaying={isCurrentTrack && status === "playing"}
+              trailing={<span className="tabular-nums text-xs">{formatDuration(track.duration_ms)}</span>}
+            />
+          );
+        }}
       />
     </PageLayout>
   );

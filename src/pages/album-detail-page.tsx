@@ -13,7 +13,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import placeholderArt from "@/assets/placeholder-art.png";
 import { TrackListHeader } from "@/components/shared/track-list-header";
-import { TrackListRow } from "@/components/shared/item/track-list-row";
+import { ListItem } from "@/components/shared/list-item";
+import { ArtistLinks } from "@/components/shared/artist-links";
 import { VirtualizedList } from "@/components/shared/virtualized-list";
 import { DetailPageTemplate } from "@/components/shared/templates/detail-page-template";
 import { DetailHero } from "@/components/shared/detail-hero";
@@ -127,11 +128,23 @@ export default function AlbumDetailPage() {
             </div>
           }
           renderItem={(track: Track, index: number) => (
-            <TrackListRow
+            <ListItem
               key={track.id}
-              track={track}
+              title={track.title}
+              subtitle={
+                <ArtistLinks
+                  names={track.artist_names}
+                  ids={track.artist_ids?.length ? track.artist_ids : track.artist_id ? [track.artist_id] : []}
+                  fallbackName={track.artist}
+                  fallbackId={track.artist_id}
+                />
+              }
               index={index + 1}
               showArtwork={false}
+              variant="indexed"
+              active={currentTrack?.id === track.id}
+              isPlaying={currentTrack?.id === track.id && status === "playing"}
+              trailing={<span className="tabular-nums text-xs">{formatDuration(track.duration_ms)}</span>}
               onClick={() => {
                 if (currentTrack?.id === track.id) {
                   if (status === "playing") pause();

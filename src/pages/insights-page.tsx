@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Clock, Music, Radio, Sparkles } from "lucide-react";
 import artistPlaceholderArt from "@/assets/artist-placeholder-art.png";
-import { EntityRow } from "@/components/shared/entity-row";
+import { ListItem } from "@/components/shared/list-item";
 import { ListeningHeatmap } from "@/components/insights/listening-heatmap";
 import { TrendIndicator } from "@/components/insights/trend-indicator";
 import { ListeningStreaks } from "@/components/insights/listening-streaks";
@@ -195,7 +195,7 @@ export default function InsightsPage() {
               <h3 className="text-sm font-bold mb-2 px-1">Top Tracks</h3>
               <div className="flex flex-col gap-0.5">
                 {rankedTracks.map((track, i) => (
-                  <EntityRow
+                  <ListItem
                     key={track.id}
                     title={track.title}
                     subtitle={track.artist}
@@ -220,7 +220,6 @@ export default function InsightsPage() {
                         track_number: null,
                       });
                     }}
-                    className="cursor-pointer"
                   />
                 ))}
                 {rankedTracks.length === 0 && (
@@ -236,7 +235,7 @@ export default function InsightsPage() {
               <h3 className="text-sm font-bold mb-2 px-1">Top Artists</h3>
               <div className="flex flex-col gap-0.5">
                 {rankedArtists.map((artist, i) => (
-                  <EntityRow
+                  <ListItem
                     key={artist.id}
                     title={artist.name}
                     subtitle={`${artist.play_count} plays`}
@@ -247,7 +246,6 @@ export default function InsightsPage() {
                     variant="compact"
                     showArtwork
                     onClick={() => openArtistDetail(artist.id)}
-                    className="cursor-pointer"
                   />
                 ))}
                 {rankedArtists.length === 0 && (
@@ -263,7 +261,7 @@ export default function InsightsPage() {
               <h3 className="text-sm font-bold mb-2 px-1">Top Albums</h3>
               <div className="flex flex-col gap-0.5">
                 {rankedAlbums.map((album, i) => (
-                  <EntityRow
+                  <ListItem
                     key={album.id}
                     title={album.title}
                     subtitle={album.artist}
@@ -273,7 +271,6 @@ export default function InsightsPage() {
                     variant="compact"
                     showArtwork
                     onClick={() => openAlbumDetail(album.id)}
-                    className="cursor-pointer"
                   />
                 ))}
                 {rankedAlbums.length === 0 && (
