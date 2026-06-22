@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { forwardRef, memo } from "react";
+import { memo } from "react";
 
 interface CompactPageHeaderProps {
   title: string;
@@ -11,23 +11,20 @@ interface CompactPageHeaderProps {
   onPlay?: () => void;
   className?: string;
   style?: React.CSSProperties;
+  ref?: React.Ref<HTMLDivElement>;
 }
 
 export const CompactPageHeader = memo(
-  forwardRef<HTMLDivElement, CompactPageHeaderProps>(
-    (
-      { title, subtitle, artworkSrc, onBack, onPlay, className, style },
-      ref
-    ) => {
-      return (
-        <div
-          ref={ref}
-          className={cn(
-            "absolute top-0 left-0 right-0 h-16 backdrop-blur-md border-b flex items-center px-4 gap-4 z-50 transition-opacity duration-200 opacity-0 pointer-events-none data-[visible=true]:pointer-events-auto will-change-[opacity]",
-            className
-          )}
-          style={style}
-        >
+  ({ title, subtitle, artworkSrc, onBack, onPlay, className, style, ref }: CompactPageHeaderProps) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "absolute top-0 left-0 right-0 h-16 backdrop-blur-md border-b flex items-center px-4 gap-4 z-50 transition-opacity duration-200 opacity-0 pointer-events-none data-[visible=true]:pointer-events-auto will-change-[opacity]",
+          className
+        )}
+        style={style}
+      >
           <div className="flex items-center gap-2">
             <Button aria-label="Back" variant="ghost" size="icon" onClick={onBack}>
               <ChevronLeft size={20} />
@@ -63,7 +60,5 @@ export const CompactPageHeader = memo(
         </div>
       );
     }
-  )
 );
-
 CompactPageHeader.displayName = "CompactPageHeader";

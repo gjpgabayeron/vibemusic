@@ -7,32 +7,37 @@ interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
   showLabel?: boolean;
 }
 
-const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
-  ({ className, value = 0, max = 100, showLabel = false, ...props }, ref) => {
-    const percentage = Math.min(100, Math.max(0, (value / max) * 100));
+const Progress = ({
+  className,
+  value = 0,
+  max = 100,
+  showLabel = false,
+  ref,
+  ...props
+}: ProgressProps & { ref?: React.Ref<HTMLDivElement> }) => {
+  const percentage = Math.min(100, Math.max(0, (value / max) * 100));
 
-    return (
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "relative h-2 w-full overflow-hidden rounded-full bg-foreground/10",
+        className
+      )}
+      {...props}
+    >
       <div
-        ref={ref}
-        className={cn(
-          "relative h-2 w-full overflow-hidden rounded-full bg-foreground/10",
-          className
-        )}
-        {...props}
-      >
-        <div
-          className="h-full bg-indigo-500 transition-all duration-300 ease-out"
-          style={{ width: `${percentage}%` }}
-        />
-        {showLabel && (
-          <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white">
-            {Math.round(percentage)}%
-          </span>
-        )}
-      </div>
-    );
-  }
-);
+        className="h-full bg-indigo-500 transition-all duration-300 ease-out"
+        style={{ width: `${percentage}%` }}
+      />
+      {showLabel && (
+        <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white">
+          {Math.round(percentage)}%
+        </span>
+      )}
+    </div>
+  );
+};
 Progress.displayName = "Progress";
 
 export { Progress };
