@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Runtime, State};
 use tauri_plugin_updater::{Update, UpdaterExt};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 // --- Types ---
 
@@ -89,6 +89,50 @@ pub async fn check_update<R: Runtime>(
         }
         Err(e) => Err(e.to_string()),
     }
+}
+
+/// Fetch the latest release changelog without triggering an update check.
+#[tauri::command]
+pub async fn get_latest_release<R: Runtime>(
+    _app: AppHandle<R>,
+    channel: String,
+) -> Result<Option<UpdateMetadata>, String> {
+    let url = if channel == "dev" {
+        option_env!("VIBEMUSIC_NIGHTLY_ENDPOINT")
+            .unwrap_or("https://github.com/justCallMeJeg/vibemusic/releases/download/nightly/latest.json")
+    } else {
+        "https://github.com/justCallMeJeg/vibemusic/releases/latest/download/latest.json"
+    };
+
+    let client = reqwest::Client::builder()
+        .user_agent(format!("vibemusic/{}", env!("CARGO_PKG_VERSION")))
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let res = client.get(url).send().await.map_err(|e| e.to_string())?;
+
+    if !res.status().is_success() {
+        return Ok(None);
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct ReleaseManifest {
+        version: String,
+        notes: Option<String>,
+        pub_date: Option<String>,
+    }
+
+    let body = res.text().await.map_err(|e| e.to_string())?;
+    let manifest: ReleaseManifest = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+
+    Ok(Some(UpdateMetadata {
+        version: manifest.version,
+        current_version: env!("CARGO_PKG_VERSION").to_string(),
+        body: manifest.notes,
+        date: manifest.pub_date,
+    }))
 }
 
 /// Download the pending update (stores bytes for later install)

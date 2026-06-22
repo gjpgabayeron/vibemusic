@@ -35,7 +35,7 @@ function formatBytes(bytes: number): string {
 
 export function SettingsAbout() {
   const [appVersion, setAppVersion] = useState("0.0.0");
-  const { check, isUpdateAvailable, install, updateManifest } =
+  const { check, isUpdateAvailable, install, updateManifest, fetchLatestRelease } =
     useUpdateStore();
   const isChecking = useUpdateStore((s) => s.isChecking);
   const isDownloading = useUpdateStore((s) => s.isDownloading);
@@ -58,7 +58,15 @@ export function SettingsAbout() {
     const hasUpdate = await check();
     if (hasUpdate) {
       setDialogOpen(true);
+    } else {
+      await fetchLatestRelease();
+      setDialogOpen(true);
     }
+  };
+
+  const handleViewChangelog = async () => {
+    await fetchLatestRelease();
+    setDialogOpen(true);
   };
 
   const handleInstall = async () => {
@@ -180,31 +188,42 @@ export function SettingsAbout() {
 
             {/* Check/View Update Button */}
             {!isReadyToInstall && !isDownloading && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    onClick={handleCheck}
-                    disabled={isChecking}
-                    className="bg-secondary/50 border-border hover:bg-accent text-foreground min-w-35"
-                  >
-                    {isChecking ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Checking...
-                      </>
-                    ) : isUpdateAvailable ? (
-                      "View Update"
-                    ) : (
-                      "Check for Updates"
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Check for updates on{" "}
-                  {channel === "stable" ? "Stable" : "Nightly"} channel
-                </TooltipContent>
-              </Tooltip>
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      onClick={handleCheck}
+                      disabled={isChecking}
+                      className="bg-secondary/50 border-border hover:bg-accent text-foreground min-w-35"
+                    >
+                      {isChecking ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Checking...
+                        </>
+                      ) : isUpdateAvailable ? (
+                        "View Update"
+                      ) : (
+                        "Check for Updates"
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Check for updates on{" "}
+                    {channel === "stable" ? "Stable" : "Nightly"} channel
+                  </TooltipContent>
+                </Tooltip>
+                <Button
+                  variant="ghost"
+                  onClick={handleViewChangelog}
+                  className="text-muted-foreground hover:text-foreground"
+                  size="sm"
+                >
+                  <FileText className="h-3.5 w-3.5 mr-1" />
+                  Changelog
+                </Button>
+              </div>
             )}
 
             {lastChecked &&

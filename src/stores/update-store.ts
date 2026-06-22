@@ -20,6 +20,7 @@ interface UpdateStore {
   downloadProgress: DownloadProgress | null;
   isUpdateAvailable: boolean;
   updateManifest: Update | null;
+  latestRelease: Update | null;
   error: string | null;
   lastChecked: Date | null;
   channel: "stable" | "dev";
@@ -27,6 +28,7 @@ interface UpdateStore {
   // Actions
   setChannel: (channel: "stable" | "dev") => void;
   check: (silent?: boolean) => Promise<boolean>;
+  fetchLatestRelease: () => Promise<void>;
   download: () => Promise<void>;
   install: () => Promise<void>;
   reset: () => void;
@@ -43,6 +45,7 @@ export const useUpdateStore = create<UpdateStore>()(
       downloadProgress: null,
       isUpdateAvailable: false,
       updateManifest: null,
+      latestRelease: null,
       error: null,
       lastChecked: null,
 
@@ -91,6 +94,30 @@ export const useUpdateStore = create<UpdateStore>()(
           return false;
         } finally {
           set({ isChecking: false });
+        }
+      },
+
+      fetchLatestRelease: async () => {
+        const { channel } = get();
+        try {
+          const release = await invoke<{
+            version: string;
+            currentVersion: string;
+            body?: string;
+            date?: string;
+          } | null>("get_latest_release", { channel });
+
+          if (release) {
+            set({
+              latestRelease: {
+                ...release,
+                downloadAndInstall: async () => {},
+              } as Update,
+            });
+          }
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          logger.error("Failed to fetch latest release:", message);
         }
       },
 
