@@ -29,7 +29,7 @@ export function TrackSelectDialog({
 }: TrackSelectDialogProps) {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [search, setSearch] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<number>>(
     new Set()
   );
@@ -40,23 +40,19 @@ export function TrackSelectDialog({
   const dialogKey = open ? "open" : "closed";
 
   useEffect(() => {
-    if (open) {
-      setIsLoading(true);
-      getTracks()
-        .then((data) => {
-          // Sort by artist, then title
-          const sorted = [...data].sort((a, b) => {
-            const artistA = a.artist || "";
-            const artistB = b.artist || "";
-            return (
-              artistA.localeCompare(artistB) || a.title.localeCompare(b.title)
-            );
-          });
-          setTracks(sorted);
-        })
-        .finally(() => setIsLoading(false));
-    }
-  }, [open]);
+    getTracks()
+      .then((data) => {
+        const sorted = [...data].sort((a, b) => {
+          const artistA = a.artist || "";
+          const artistB = b.artist || "";
+          return (
+            artistA.localeCompare(artistB) || a.title.localeCompare(b.title)
+          );
+        });
+        setTracks(sorted);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const filteredTracks = useMemo(() => {
     // Filter out existing tracks first
