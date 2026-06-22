@@ -37,6 +37,8 @@ export function TrackSelectDialog({
 
   const addToPlaylist = useLibraryStore((s) => s.addToPlaylist);
 
+  const dialogKey = open ? "open" : "closed";
+
   useEffect(() => {
     if (open) {
       setIsLoading(true);
@@ -53,7 +55,6 @@ export function TrackSelectDialog({
           setTracks(sorted);
         })
         .finally(() => setIsLoading(false));
-      setSelectedTrackIds(new Set());
     }
   }, [open]);
 
@@ -101,7 +102,7 @@ export function TrackSelectDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog key={dialogKey} open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-popover border-border text-popover-foreground max-w-2xl h-[80vh] flex flex-col p-0 overflow-hidden outline-none">
         <DialogHeader className="p-4 pb-2 shrink-0">
           <DialogTitle>Add Songs to Playlist</DialogTitle>
