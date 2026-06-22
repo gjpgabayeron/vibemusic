@@ -19,6 +19,7 @@ import { ArrowUpDown, Search, Filter } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useLibraryStore } from "@/stores/library-store";
 import { useIsPlayerVisible } from "@/stores/audio-store";
+import { PageHeader } from "@/components/shared/page-header";
 import { PageLayout } from "@/components/shared/page-layout";
 
 type SortKey = "title" | "artist" | "date_added" | "duration";
@@ -108,9 +109,7 @@ export default function SongsPage() {
 
   return (
     <PageLayout overflowHidden>
-      <div className="mt-8 flex items-center justify-between mb-6 px-2 gap-4">
-        <h1 className="text-3xl font-bold">Songs</h1>
-
+      <PageHeader title="Songs">
         {/* Toolbar */}
         <div className="flex items-center gap-2">
           <div className="relative w-64">
@@ -176,7 +175,7 @@ export default function SongsPage() {
             {displayedTracks.length} tracks
           </div>
         </div>
-      </div>
+      </PageHeader>
 
       <div
         ref={parentRef}
