@@ -71,6 +71,9 @@ interface SettingsState {
   // Mini Player
   miniPlayerStyle: "square" | "wide" | "bar";
   miniPlayerPosition: "bottom-right" | "bottom-left" | "top-right" | "top-left";
+
+  // Media Keys
+  enableMediaKeys: boolean;
 }
 
 interface SettingsActions {
@@ -110,6 +113,7 @@ interface SettingsActions {
   setMiniPlayerPosition: (
     position: "bottom-right" | "bottom-left" | "top-right" | "top-left"
   ) => void;
+  setEnableMediaKeys: (enabled: boolean) => Promise<void>;
 
   loadSettings: (profileId?: string) => Promise<void>;
 }
@@ -134,6 +138,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
     autoplay: false,
     miniPlayerStyle: "square",
     miniPlayerPosition: "bottom-right",
+    enableMediaKeys: true,
 
     // Sidebar Defaults
     sidebarItems: [
@@ -346,6 +351,12 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
       await store.set("miniPlayerPosition", position);
       await store.save();
     },
+    setEnableMediaKeys: async (enabled) => {
+      set({ enableMediaKeys: enabled });
+      const store = await getStore();
+      await store.set("enableMediaKeys", enabled);
+      await store.save();
+    },
 
     loadSettings: async (profileId?: string) => {
       if (!profileId) {
@@ -403,6 +414,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
         const miniPlayerPosition = await getVal<
           "bottom-right" | "bottom-left" | "top-right" | "top-left"
         >("miniPlayerPosition");
+        const enableMediaKeys = await getVal<boolean>("enableMediaKeys");
 
         const themeValue = theme ?? "system";
         const resolvedTheme = applyThemeClass(themeValue);
@@ -438,6 +450,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
           playlistsSortDirection: playlistsSortDirection ?? "asc",
           miniPlayerStyle: miniPlayerStyle ?? "square",
           miniPlayerPosition: miniPlayerPosition ?? "bottom-right",
+          enableMediaKeys: enableMediaKeys ?? true,
           isLoading: false,
         });
 

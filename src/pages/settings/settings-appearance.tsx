@@ -8,7 +8,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Moon, Sun, Monitor, Palette, Layout } from "lucide-react";
+import { ChevronDown, Moon, Sun, Monitor, Palette, Layout, Keyboard } from "lucide-react";
 import { SidebarCustomizer } from "./sidebar-customizer";
 
 export function SettingsAppearance() {
@@ -22,6 +22,8 @@ export function SettingsAppearance() {
   const setMiniPlayerStyle = useSettingsStore((s) => s.setMiniPlayerStyle);
   const miniPlayerPosition = useSettingsStore((s) => s.miniPlayerPosition);
   const setMiniPlayerPosition = useSettingsStore((s) => s.setMiniPlayerPosition);
+  const enableMediaKeys = useSettingsStore((s) => s.enableMediaKeys);
+  const setEnableMediaKeys = useSettingsStore((s) => s.setEnableMediaKeys);
 
   return (
     <div className="space-y-6">
@@ -164,6 +166,23 @@ export function SettingsAppearance() {
               </DropdownMenu>
             </div>
           </div>
+        </div>
+
+        {/* Media Keys */}
+        <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 border border-border">
+          <div className="flex items-center gap-2">
+            <Keyboard className="w-5 h-5 text-muted-foreground shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">Media Keys</span>
+              <span className="text-xs text-muted-foreground">
+                Allow keyboard media keys to control playback
+              </span>
+            </div>
+          </div>
+          <Switch
+            checked={enableMediaKeys}
+            onCheckedChange={setEnableMediaKeys}
+          />
         </div>
 
         {/* Sidebar Layout */}

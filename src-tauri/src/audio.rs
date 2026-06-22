@@ -7,7 +7,7 @@ use ringbuf::{
     HeapRb,
 };
 use serde::Serialize;
-use souvlaki::{MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig};
+use souvlaki::{MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig, SeekDirection};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -15,7 +15,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 use std::fs::File;
 use tauri::{AppHandle, Emitter, Manager};
-use log::{info, error};
+use log::{info, error, warn};
 
 use symphonia::core::codecs::audio::*;
 use symphonia::core::formats::*;
@@ -64,6 +64,7 @@ enum AudioCommand {
         title: String,
         artist: String,
         album: String,
+        artwork_path: Option<String>,
     },
     Pause,
     Resume,
@@ -155,6 +156,40 @@ impl AudioEngine {
                 souvlaki::MediaControlEvent::Stop => {
                     handle.emit("media-stop", ()).unwrap();
                 }
+                souvlaki::MediaControlEvent::Seek(dir) => {
+                    let dir_str = match dir {
+                        SeekDirection::Forward => "forward",
+                        SeekDirection::Backward => "backward",
+                    };
+                    handle.emit("media-seek", serde_json::json!({"direction": dir_str})).unwrap();
+                }
+                souvlaki::MediaControlEvent::SeekBy(dir, dur) => {
+                    let dir_str = match dir {
+                        SeekDirection::Forward => "forward",
+                        SeekDirection::Backward => "backward",
+                    };
+                    handle.emit("media-seek-by", serde_json::json!({
+                        "direction": dir_str,
+                        "duration_ms": dur.as_millis() as u64,
+                    })).unwrap();
+                }
+                souvlaki::MediaControlEvent::SetPosition(pos) => {
+                    handle.emit("media-set-position", serde_json::json!({
+                        "position_ms": pos.0.as_millis() as u64,
+                    })).unwrap();
+                }
+                souvlaki::MediaControlEvent::SetVolume(vol) => {
+                    handle.emit("media-set-volume", serde_json::json!({"volume": vol})).unwrap();
+                }
+                souvlaki::MediaControlEvent::Raise => {
+                    if let Some(window) = handle.get_webview_window("main") {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+                souvlaki::MediaControlEvent::Quit => {
+                    handle.emit("media-quit", ()).unwrap();
+                }
                 _ => {}
             })
             .ok();
@@ -166,6 +201,7 @@ impl AudioEngine {
         title: String,
         artist: String,
         album: String,
+        artwork_path: Option<String>,
     ) {
         self.command_tx
             .send(AudioCommand::Play {
@@ -173,6 +209,7 @@ impl AudioEngine {
                 title,
                 artist,
                 album,
+                artwork_path,
             })
             .ok();
     }
@@ -358,6 +395,9 @@ struct AudioWorker {
     current_position_ms: u64,
     samples_played: u64,
 
+    // Media controls position update tracking
+    last_media_pos_update: Instant,
+
     // Buffers
     primary_buffer: Vec<f32>,
     secondary_buffer: Vec<f32>,
@@ -404,6 +444,7 @@ impl AudioWorker {
             duration_ms: 0,
             current_position_ms: 0,
             samples_played: 0,
+            last_media_pos_update: Instant::now(),
             primary_buffer: vec![0.0f32; 8192],
             secondary_buffer: vec![0.0f32; 8192],
             resample_buf: vec![0.0f32; 8192],
@@ -435,9 +476,9 @@ impl AudioWorker {
     fn handle_command(&mut self, cmd: AudioCommand) {
         match cmd {
             AudioCommand::Play {
-                path, title, artist, album,
+                path, title, artist, album, artwork_path,
             } => {
-                self.handle_play_request(&path, &title, &artist, &album);
+                self.handle_play_request(&path, &title, &artist, &album, artwork_path.as_deref());
             }
             AudioCommand::Pause => self.pause(),
             AudioCommand::Resume => self.resume(),
@@ -458,7 +499,7 @@ impl AudioWorker {
         }
     }
 
-    fn handle_play_request(&mut self, path: &str, title: &str, artist: &str, album: &str) {
+    fn handle_play_request(&mut self, path: &str, title: &str, artist: &str, album: &str, artwork_path: Option<&str>) {
         let is_same_track = self.current_file_path.as_deref() == Some(path);
 
         let should_crossfade = self.is_playing.load(Ordering::Relaxed)
@@ -491,21 +532,21 @@ impl AudioWorker {
                         s.position_ms = 0;
                     }
 
-                    self.update_media_metadata(title, artist, album, self.duration_ms);
+                    self.update_media_metadata(title, artist, album, artwork_path, self.duration_ms);
                     self.emit_state();
                 }
                 Err(e) => {
                     error!("Failed to create secondary decoder: {}", e);
-                    self.play_file_hard_cut(path, title, artist, album);
+                    self.play_file_hard_cut(path, title, artist, album, artwork_path);
                 }
             }
         } else {
             info!("Playing track (hard cut): {}", path);
-            self.play_file_hard_cut(path, title, artist, album);
+            self.play_file_hard_cut(path, title, artist, album, artwork_path);
         }
     }
 
-    fn play_file_hard_cut(&mut self, path: &str, title: &str, artist: &str, album: &str) {
+    fn play_file_hard_cut(&mut self, path: &str, title: &str, artist: &str, album: &str, artwork_path: Option<&str>) {
         self.stop();
 
         let (decoder, buf) = match SymphoniaDecoder::new(path) {
@@ -538,25 +579,28 @@ impl AudioWorker {
             s.position_ms = 0;
         }
 
-        self.update_media_metadata(title, artist, album, self.duration_ms);
+        self.update_media_metadata(title, artist, album, artwork_path, self.duration_ms);
         self.is_playing.store(true, Ordering::Relaxed);
         self.emit_state();
     }
 
-    fn update_media_metadata(&self, title: &str, artist: &str, album: &str, duration_ms: u64) {
+    fn update_media_metadata(&self, title: &str, artist: &str, album: &str, artwork_path: Option<&str>, duration_ms: u64) {
         if let Ok(mut c) = self.media_controls.lock() {
-            c.set_metadata(MediaMetadata {
+            // cover_url skipped: souvlaki's Windows backend has a bug with file:// URIs (HRESULT 0x800700A1)
+            if let Err(e) = c.set_metadata(MediaMetadata {
                 title: Some(title),
                 artist: Some(artist),
                 album: Some(album),
                 duration: Some(Duration::from_millis(duration_ms)),
                 cover_url: None,
-            })
-            .ok();
-            c.set_playback(MediaPlayback::Playing {
+            }) {
+                error!("set_metadata failed: {:?}", e);
+            }
+            if let Err(e) = c.set_playback(MediaPlayback::Playing {
                 progress: Some(MediaPosition(Duration::ZERO)),
-            })
-            .ok();
+            }) {
+                error!("set_playback failed: {:?}", e);
+            }
         }
     }
 
@@ -906,11 +950,21 @@ impl AudioWorker {
         }
     }
 
-    fn emit_progress(&self) {
-        let mut s = self.state.lock().unwrap();
-        if s.is_playing && !s.is_paused {
-            s.position_ms = self.current_position_ms;
-            self.app_handle.emit(EVENT_PLAYBACK_PROGRESS, &*s).ok();
+    fn emit_progress(&mut self) {
+        let should_update = {
+            let mut s = self.state.lock().unwrap();
+            if s.is_playing && !s.is_paused {
+                s.position_ms = self.current_position_ms;
+                self.app_handle.emit(EVENT_PLAYBACK_PROGRESS, &*s).ok();
+                self.last_media_pos_update.elapsed() >= Duration::from_secs(5)
+            } else {
+                false
+            }
+        };
+        // Must not hold state lock when calling update_media_controls (it locks state too)
+        if should_update {
+            self.update_media_controls();
+            self.last_media_pos_update = Instant::now();
         }
     }
 
@@ -950,12 +1004,14 @@ pub fn audio_play(
     title: Option<String>,
     artist: Option<String>,
     album: Option<String>,
+    artwork_path: Option<String>,
 ) -> Result<(), AppError> {
     state.0.play(
         path,
         title.unwrap_or("Unknown".into()),
         artist.unwrap_or("Unknown".into()),
         album.unwrap_or("Unknown".into()),
+        artwork_path,
     );
     Ok(())
 }

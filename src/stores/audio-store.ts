@@ -100,6 +100,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         title: track.title,
         artist: track.artist,
         album: track.album,
+        artworkPath: track.artwork_path,
       });
     } catch (e) {
       logger.error("Failed to play", e);
@@ -520,6 +521,61 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         get().stop();
       });
 
+      // Media key rate limiting: ignore rapid duplicate events within 200ms
+      let lastSeekTime = 0;
+      let lastSeekByTime = 0;
+      let lastSetPosTime = 0;
+      let lastSetVolTime = 0;
+
+      const unlistenMediaSeek = listen<{ direction: string }>("media-seek", (event) => {
+        const now = Date.now();
+        if (now - lastSeekTime < 200) return;
+        lastSeekTime = now;
+        const dir = event.payload.direction;
+        const seekMs = 10000; // 10s default
+        const state = get();
+        const newPos = dir === "forward"
+          ? state.position + seekMs
+          : Math.max(0, state.position - seekMs);
+        state.seek(newPos);
+      });
+
+      const unlistenMediaSeekBy = listen<{ direction: string; duration_ms: number }>("media-seek-by", (event) => {
+        const now = Date.now();
+        if (now - lastSeekByTime < 200) return;
+        lastSeekByTime = now;
+        const { direction: dir, duration_ms: ms } = event.payload;
+        const state = get();
+        const newPos = dir === "forward"
+          ? state.position + ms
+          : Math.max(0, state.position - ms);
+        state.seek(newPos);
+      });
+
+      const unlistenMediaSetPos = listen<{ position_ms: number }>("media-set-position", (event) => {
+        const now = Date.now();
+        if (now - lastSetPosTime < 200) return;
+        lastSetPosTime = now;
+        get().seek(event.payload.position_ms);
+      });
+
+      const unlistenMediaSetVol = listen<{ volume: number }>("media-set-volume", (event) => {
+        const now = Date.now();
+        if (now - lastSetVolTime < 200) return;
+        lastSetVolTime = now;
+        get().setVolume(event.payload.volume);
+      });
+
+      const unlistenMediaRaise = listen("media-raise", () => {
+        // Raise is handled in Rust (shows main window)
+      });
+
+      const unlistenMediaQuit = listen("media-quit", () => {
+        logger.info("Media quit requested");
+        get().stop();
+        invoke("audio_stop");
+      });
+
       const unlistenError = listen<string>(
         "audio-playback-error",
         async (event) => {
@@ -575,6 +631,12 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         unlistenMediaNext.then((f) => f());
         unlistenMediaPrev.then((f) => f());
         unlistenMediaStop.then((f) => f());
+        unlistenMediaSeek.then((f) => f());
+        unlistenMediaSeekBy.then((f) => f());
+        unlistenMediaSetPos.then((f) => f());
+        unlistenMediaSetVol.then((f) => f());
+        unlistenMediaRaise.then((f) => f());
+        unlistenMediaQuit.then((f) => f());
 
         set({ _listenersInitialized: false });
       };

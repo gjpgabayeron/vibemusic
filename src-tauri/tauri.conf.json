@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "vibemusic",
+  "productName": "Vibe Music",
   "version": "0.0.28",
   "identifier": "com.music.vibe",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "vibemusic",
+        "title": "Vibe Music",
         "width": 1280,
         "height": 720,
         "decorations": false,
@@ -24,7 +24,7 @@
       },
       {
         "label": "miniplayer",
-        "title": "vibemusic",
+        "title": "Vibe Music",
         "width": 300,
         "height": 360,
         "decorations": false,
@@ -58,6 +58,7 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": true,
+
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
