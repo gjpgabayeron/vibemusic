@@ -1,12 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   CommandDialog,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
 } from "@/components/ui/command";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { useAudioStore } from "@/stores/audio-store";
@@ -19,25 +15,11 @@ import {
   search,
   SearchResults,
 } from "@/lib/api";
-import {
-  Disc,
-  ListMusic,
-  Music,
-  Play,
-  Shuffle,
-  Plus,
-  Loader2,
-} from "lucide-react";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+import { Disc, ListMusic, Music } from "lucide-react";
 import { toast } from "sonner";
-import { ScrollingText } from "@/components/shared/scrolling-text";
 import { logger } from "@/lib/logger";
+import { SearchResultItem } from "@/components/shared/search-result-item";
+import { SearchResultsView } from "@/components/shared/search-results";
 
 export function GlobalSearch() {
   const isSearchOpen = useNavigationStore((s) => s.isSearchOpen);
@@ -110,7 +92,7 @@ export function GlobalSearch() {
       // Better to pass just the track for now, or the track + search results as context
       setSearchOpen(false);
     },
-    [play, results.tracks, setSearchOpen]
+    [play, results.tracks, setSearchOpen],
   );
 
   const handlePlayAlbum = useCallback(
@@ -127,7 +109,7 @@ export function GlobalSearch() {
         logger.error("Failed to play album", e);
       }
     },
-    [play, setSearchOpen]
+    [play, setSearchOpen],
   );
 
   const handlePlayPlaylist = useCallback(
@@ -144,7 +126,7 @@ export function GlobalSearch() {
         logger.error("Failed to play playlist", e);
       }
     },
-    [play, setSearchOpen]
+    [play, setSearchOpen],
   );
 
   const handleAddToQueue = useCallback(
@@ -166,7 +148,7 @@ export function GlobalSearch() {
         toast.error("Failed to add to queue");
       }
     },
-    [addToQueue]
+    [addToQueue],
   );
 
   const handlePlayNext = useCallback(
@@ -188,153 +170,108 @@ export function GlobalSearch() {
         toast.error("Failed");
       }
     },
-    [playNext]
-  );
-
-  // Item renderer
-  const renderItem = useCallback(
-    (
-      id: string,
-      type: "track" | "album" | "playlist",
-      data: Track | Album | Playlist,
-      icon: React.ReactNode,
-      primary: string,
-      secondary: string,
-      onSelect: () => void,
-      _keywords: string[] = []
-    ) => {
-      return (
-        <ContextMenu key={id}>
-          <ContextMenuTrigger asChild>
-            <CommandItem
-              value={id} // Unique ID for cmdk
-              onSelect={onSelect}
-              className="py-1.5"
-            >
-              {icon}
-              <div className="flex flex-col min-w-0 flex-1">
-                <ScrollingText className="font-medium group-data-[selected=true]:text-primary transition-colors w-full">
-                  {primary}
-                </ScrollingText>
-                <span className="text-xs text-neutral-500 truncate block">
-                  {secondary}
-                </span>
-              </div>
-            </CommandItem>
-          </ContextMenuTrigger>
-          <ContextMenuContent className="w-48">
-            <ContextMenuItem
-              onSelect={() => {
-                if (type === "track") handlePlayTrack(data as Track);
-                else if (type === "album") handlePlayAlbum((data as Album).id);
-                else handlePlayPlaylist((data as Playlist).id);
-              }}
-            >
-              <Play className="mr-2 h-4 w-4" /> Play
-            </ContextMenuItem>
-            <ContextMenuItem
-              onSelect={() => {
-                if (type === "track") handlePlayTrack(data as Track);
-                else if (type === "album")
-                  handlePlayAlbum((data as Album).id, true);
-                else handlePlayPlaylist((data as Playlist).id, true);
-              }}
-            >
-              <Shuffle className="mr-2 h-4 w-4" /> Shuffle
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem onSelect={() => handlePlayNext(data, type)}>
-              <ListMusic className="mr-2 h-4 w-4" /> Play Next
-            </ContextMenuItem>
-            <ContextMenuItem onSelect={() => handleAddToQueue(data, type)}>
-              <Plus className="mr-2 h-4 w-4" /> Add to Queue
-            </ContextMenuItem>
-            {type !== "track" && (
-              <>
-                <ContextMenuSeparator />
-                <ContextMenuItem onSelect={onSelect}>
-                  <Disc className="mr-2 h-4 w-4" /> Go to{" "}
-                  {type === "album" ? "Album" : "Playlist"}
-                </ContextMenuItem>
-              </>
-            )}
-          </ContextMenuContent>
-        </ContextMenu>
-      );
-    },
-    [
-      handlePlayTrack,
-      handlePlayAlbum,
-      handlePlayPlaylist,
-      handlePlayNext,
-      handleAddToQueue,
-    ]
+    [playNext],
   );
 
   const songsSection = useMemo(
     () =>
       results.tracks.length > 0 && (
         <CommandGroup heading="Songs">
-          {results.tracks.map((t) =>
-            renderItem(
-              `track-${t.id}`,
-              "track",
-              t,
-              <Music className="mr-2 h-3 w-3 opacity-70 shrink-0" />,
-              t.title,
-              t.artist ?? "Unknown",
-              () => handlePlayTrack(t)
-            )
-          )}
+          {results.tracks.map((t) => (
+            <SearchResultItem
+              key={`track-${t.id}`}
+              id={`track-${t.id}`}
+              icon={<Music className="mr-2 h-3 w-3 opacity-70 shrink-0" />}
+              primary={t.title}
+              secondary={t.artist ?? "Unknown"}
+              onSelect={() => handlePlayTrack(t)}
+              onPlay={() => handlePlayTrack(t)}
+              onShuffle={() => handlePlayTrack(t)}
+              onPlayNext={() => handlePlayNext(t, "track")}
+              onAddToQueue={() => handleAddToQueue(t, "track")}
+            />
+          ))}
         </CommandGroup>
       ),
-    [results.tracks, renderItem, handlePlayTrack]
+    [results.tracks, handlePlayTrack, handlePlayNext, handleAddToQueue],
   );
 
   const albumsSection = useMemo(
     () =>
       results.albums.length > 0 && (
         <CommandGroup heading="Albums">
-          {results.albums.map((a) =>
-            renderItem(
-              `album-${a.id}`,
-              "album",
-              a,
-              <Disc className="mr-2 h-3 w-3 opacity-70 shrink-0" />,
-              a.title,
-              a.artist_name ?? "Unknown",
-              () => {
+          {results.albums.map((a) => (
+            <SearchResultItem
+              key={`album-${a.id}`}
+              id={`album-${a.id}`}
+              icon={<Disc className="mr-2 h-3 w-3 opacity-70 shrink-0" />}
+              primary={a.title}
+              secondary={a.artist_name ?? "Unknown"}
+              onSelect={() => {
                 openAlbumDetail(a.id);
                 setSearchOpen(false);
-              }
-            )
-          )}
+              }}
+              onPlay={() => handlePlayAlbum(a.id)}
+              onShuffle={() => handlePlayAlbum(a.id, true)}
+              onPlayNext={() => handlePlayNext(a, "album")}
+              onAddToQueue={() => handleAddToQueue(a, "album")}
+              showGoTo
+              goToLabel="Album"
+              onGoTo={() => {
+                openAlbumDetail(a.id);
+                setSearchOpen(false);
+              }}
+            />
+          ))}
         </CommandGroup>
       ),
-    [results.albums, renderItem, openAlbumDetail, setSearchOpen]
+    [
+      results.albums,
+      openAlbumDetail,
+      setSearchOpen,
+      handlePlayAlbum,
+      handlePlayNext,
+      handleAddToQueue,
+    ],
   );
 
   const playlistsSection = useMemo(
     () =>
       results.playlists.length > 0 && (
         <CommandGroup heading="Playlists">
-          {results.playlists.map((p) =>
-            renderItem(
-              `playlist-${p.id}`,
-              "playlist",
-              p,
-              <ListMusic className="mr-2 h-3 w-3 opacity-70 shrink-0" />,
-              p.name,
-              `${p.track_count} tracks`,
-              () => {
+          {results.playlists.map((p) => (
+            <SearchResultItem
+              key={`playlist-${p.id}`}
+              id={`playlist-${p.id}`}
+              icon={<ListMusic className="mr-2 h-3 w-3 opacity-70 shrink-0" />}
+              primary={p.name}
+              secondary={`${p.track_count} tracks`}
+              onSelect={() => {
                 openPlaylistDetail(p.id);
                 setSearchOpen(false);
-              }
-            )
-          )}
+              }}
+              onPlay={() => handlePlayPlaylist(p.id)}
+              onShuffle={() => handlePlayPlaylist(p.id, true)}
+              onPlayNext={() => handlePlayNext(p, "playlist")}
+              onAddToQueue={() => handleAddToQueue(p, "playlist")}
+              showGoTo
+              goToLabel="Playlist"
+              onGoTo={() => {
+                openPlaylistDetail(p.id);
+                setSearchOpen(false);
+              }}
+            />
+          ))}
         </CommandGroup>
       ),
-    [results.playlists, renderItem, openPlaylistDetail, setSearchOpen]
+    [
+      results.playlists,
+      openPlaylistDetail,
+      setSearchOpen,
+      handlePlayPlaylist,
+      handlePlayNext,
+      handleAddToQueue,
+    ],
   );
 
   return (
@@ -350,36 +287,14 @@ export function GlobalSearch() {
         value={searchQuery}
         onValueChange={setSearchQuery}
       />
-      <CommandList className="max-h-[300px]">
-        {loading && (
-          <div className="flex items-center justify-center py-6 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            Searching...
-          </div>
-        )}
-        {!loading &&
-        searchQuery.length > 0 &&
-        results.tracks.length === 0 &&
-        results.albums.length === 0 &&
-        results.playlists.length === 0 ? (
-          <CommandEmpty>No results found.</CommandEmpty>
-        ) : null}
-
-        {!loading && (
-          <>
-            {songsSection}
-            {results.tracks.length > 0 &&
-              (results.albums.length > 0 || results.playlists.length > 0) && (
-                <CommandSeparator />
-              )}
-            {albumsSection}
-            {results.albums.length > 0 && results.playlists.length > 0 && (
-              <CommandSeparator />
-            )}
-            {playlistsSection}
-          </>
-        )}
-      </CommandList>
+      <SearchResultsView
+        loading={loading}
+        searchQuery={searchQuery}
+        results={results}
+        songsSection={songsSection}
+        albumsSection={albumsSection}
+        playlistsSection={playlistsSection}
+      />
     </CommandDialog>
   );
 }
