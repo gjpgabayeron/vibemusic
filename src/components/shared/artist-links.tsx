@@ -39,7 +39,7 @@ export function ArtistLinks({
                   );
               }}
               onClick={(e) => handleArtistClick(e, ids[index])}
-              className="hover:underline cursor-pointer hover:text-white transition-colors"
+              className="hover:underline cursor-pointer transition-colors"
             >
               {name}
             </button>

@@ -1,6 +1,11 @@
 import { useState, useMemo } from "react";
 import { useNavigationStore } from "@/stores/navigation-store";
-import { useAudioStore, useCurrentTrack, usePlayerStatus, useIsPlayerVisible } from "@/stores/audio-store";
+import {
+  useAudioStore,
+  useCurrentTrack,
+  usePlayerStatus,
+  useIsPlayerVisible,
+} from "@/stores/audio-store";
 import { logger } from "@/lib/logger";
 import { toast } from "sonner";
 import { getAlbumTracks, getPlaylistTracks, Playlist } from "@/lib/api";
@@ -41,10 +46,17 @@ export default function HomePage() {
   const handlePlayAlbum = async (albumId: number, shuffle = false) => {
     try {
       const tracks = await getAlbumTracks(albumId);
-      if (tracks.length === 0) { toast.error("Album is empty"); return; }
-      const queue = shuffle ? [...tracks].sort(() => Math.random() - 0.5) : tracks;
+      if (tracks.length === 0) {
+        toast.error("Album is empty");
+        return;
+      }
+      const queue = shuffle
+        ? [...tracks].sort(() => Math.random() - 0.5)
+        : tracks;
       play(queue[0], queue);
-    } catch (e) { logger.error("Failed to play album", e); }
+    } catch (e) {
+      logger.error("Failed to play album", e);
+    }
   };
 
   const handlePlayNextAlbum = async (albumId: number) => {
@@ -53,7 +65,10 @@ export default function HomePage() {
       if (tracks.length === 0) return;
       [...tracks].reverse().forEach((track) => playNext(track));
       toast.success("Playing album next");
-    } catch (e) { logger.error("Failed to play album next", e); toast.error("Failed to play next"); }
+    } catch (e) {
+      logger.error("Failed to play album next", e);
+      toast.error("Failed to play next");
+    }
   };
 
   const handleAddAlbumToQueue = async (albumId: number) => {
@@ -62,16 +77,25 @@ export default function HomePage() {
       if (tracks.length === 0) return;
       tracks.forEach((track) => addToQueue(track));
       toast.success("Added album to queue");
-    } catch (e) { logger.error("Failed to add album to queue", e); }
+    } catch (e) {
+      logger.error("Failed to add album to queue", e);
+    }
   };
 
   const handlePlayPlaylist = async (playlistId: number, shuffle = false) => {
     try {
       const tracks = await getPlaylistTracks(playlistId);
-      if (tracks.length === 0) { toast.error("Playlist is empty"); return; }
-      const queue = shuffle ? [...tracks].sort(() => Math.random() - 0.5) : tracks;
+      if (tracks.length === 0) {
+        toast.error("Playlist is empty");
+        return;
+      }
+      const queue = shuffle
+        ? [...tracks].sort(() => Math.random() - 0.5)
+        : tracks;
       play(queue[0], queue);
-    } catch (e) { logger.error("Failed to play playlist", e); }
+    } catch (e) {
+      logger.error("Failed to play playlist", e);
+    }
   };
 
   const handlePlayNextPlaylist = async (playlistId: number) => {
@@ -80,7 +104,10 @@ export default function HomePage() {
       if (tracks.length === 0) return;
       [...tracks].reverse().forEach((track) => playNext(track));
       toast.success("Playing playlist next");
-    } catch (e) { logger.error("Failed to play playlist next", e); toast.error("Failed to play next"); }
+    } catch (e) {
+      logger.error("Failed to play playlist next", e);
+      toast.error("Failed to play next");
+    }
   };
 
   const handleAddPlaylistToQueue = async (playlistId: number) => {
@@ -89,7 +116,9 @@ export default function HomePage() {
       if (tracks.length === 0) return;
       tracks.forEach((track) => addToQueue(track));
       toast.success("Added playlist to queue");
-    } catch (e) { logger.error("Failed to add playlist to queue", e); }
+    } catch (e) {
+      logger.error("Failed to add playlist to queue", e);
+    }
   };
 
   const formatDuration = (ms: number) => {
@@ -146,7 +175,7 @@ export default function HomePage() {
     <PageLayout overflowHidden>
       {/* Header */}
       <div className="mt-8 mb-6 px-2">
-        <h1 className="text-4xl font-bold bg-linear-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <h1 className="text-4xl font-bold brightness-50 dark:brightness-100 text-primary dark:text-primary">
           Welcome Back
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -270,10 +299,13 @@ export default function HomePage() {
                   artworkSrc={track.artwork_path || undefined}
                   showArtwork
                   active={currentTrack?.id === track.id}
-                  isPlaying={currentTrack?.id === track.id && status === "playing"}
+                  isPlaying={
+                    currentTrack?.id === track.id && status === "playing"
+                  }
                   onClick={() => {
                     if (currentTrack?.id === track.id) {
-                      if (status === "playing") pause(); else resume();
+                      if (status === "playing") pause();
+                      else resume();
                     } else {
                       play(track);
                     }
@@ -286,15 +318,20 @@ export default function HomePage() {
                   menuActions={{
                     onPlay: () => {
                       if (currentTrack?.id === track.id) {
-                        if (status === "playing") pause(); else resume();
+                        if (status === "playing") pause();
+                        else resume();
                       } else {
                         play(track);
                       }
                     },
                     onPlayNext: () => playNext(track),
                     onAddToQueue: () => addToQueue(track),
-                    onAddToPlaylist: (playlistId) => addToPlaylist(playlistId, track.id),
-                    playlists: playlists.map((p) => ({ id: p.id, name: p.name })),
+                    onAddToPlaylist: (playlistId) =>
+                      addToPlaylist(playlistId, track.id),
+                    playlists: playlists.map((p) => ({
+                      id: p.id,
+                      name: p.name,
+                    })),
                   }}
                 />
               ))}

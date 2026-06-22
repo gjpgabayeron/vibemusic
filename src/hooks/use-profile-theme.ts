@@ -34,9 +34,17 @@ export function useProfileTheme() {
     const root = document.documentElement;
     const color = activeProfile?.color;
 
+    const setOn = (el: HTMLElement, key: string, value: string) =>
+      el.style.setProperty(`--${key}`, value);
+    const removeOn = (el: HTMLElement, key: string) =>
+      el.style.removeProperty(`--${key}`);
+
     const reset = () => {
       for (const v of THEME_VARS) {
-        root.style.removeProperty(`--${v}`);
+        removeOn(root, v);
+        for (const dark of document.querySelectorAll(".dark")) {
+          removeOn(dark as HTMLElement, v);
+        }
       }
     };
 
@@ -76,8 +84,12 @@ export function useProfileTheme() {
           "sidebar-ring": hsl(h, 45, 50),
         };
 
+    const targets = [root, ...document.querySelectorAll<HTMLElement>(".dark")];
+
     for (const [key, value] of Object.entries(vars)) {
-      root.style.setProperty(`--${key}`, value);
+      for (const target of targets) {
+        setOn(target, key, value);
+      }
     }
 
     logger.debug("[theme] Applied profile color:", color, isDark ? "dark" : "light");

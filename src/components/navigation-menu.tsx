@@ -37,7 +37,7 @@ export default function NavigationMenu({
   const isSearchOpen = useNavigationStore((s) => s.isSearchOpen);
   const sidebarItems = useSettingsStore((s) => s.sidebarItems);
 
-const iconMap: Record<string, React.ReactNode> = {
+  const iconMap: Record<string, React.ReactNode> = {
     home: <Home />,
     search: <Search />,
     songs: <Music2 />,
@@ -48,7 +48,7 @@ const iconMap: Record<string, React.ReactNode> = {
     settings: <Settings />,
   };
 
-const labelMap: Record<string, string> = {
+  const labelMap: Record<string, string> = {
     home: "Home",
     search: "Search",
     songs: "Songs",
@@ -79,7 +79,7 @@ const labelMap: Record<string, string> = {
                     }}
                     className={
                       isActive || (isSearch && isSearchOpen)
-                        ? "text-foreground"
+                        ? "text-primary hover:bg-accent"
                         : "text-muted-foreground hover:text-foreground"
                     }
                   >

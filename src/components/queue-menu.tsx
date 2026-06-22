@@ -52,16 +52,16 @@ export default function QueueMenu() {
               <p className="font-bold text-foreground truncate text-lg">
                 {currentTrack.title}
               </p>
-              <p className="text-sm text-primary truncate">
+              <p className="text-sm text-foreground truncate">
                 {currentTrack.artist || "Unknown Artist"}
               </p>
             </div>
-            <div className="text-xs font-mono font-bold text-muted-foreground bg-card px-2 py-1 rounded">
+            <div className="text-xs font-mono font-bold text-primary bg-card px-2 py-1 rounded">
               {status === "playing"
                 ? "PLAYING"
                 : status === "paused"
-                ? "PAUSED"
-                : "STOPPED"}
+                  ? "PAUSED"
+                  : "STOPPED"}
             </div>
           </div>
         </div>

@@ -120,7 +120,7 @@ export default function MusicControler() {
               decoding="async"
             />
             <div className="flex flex-col min-w-0 w-full pr-4">
-              <ScrollingText className="text-foreground text-base font-bold w-full">
+              <ScrollingText className="text-primary text-base font-bold w-full">
                 {currentTrack.title}
               </ScrollingText>
               <div className="text-muted-foreground text-xs font-normal line-clamp-1">

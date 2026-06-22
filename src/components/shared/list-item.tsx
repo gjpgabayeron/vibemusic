@@ -21,13 +21,13 @@ const rowVariants = cva(
   {
     variants: {
       variant: {
-        default: "hover:bg-accent/50",
-        indexed: "hover:bg-accent/50",
-        compact: "hover:bg-accent/50",
-        detailed: "hover:bg-accent/50 p-2",
+        default: "hover:bg-accent/10",
+        indexed: "hover:bg-accent/10",
+        compact: "hover:bg-accent/10",
+        detailed: "hover:bg-accent/10 p-2",
       },
       active: {
-        true: "bg-accent/50 text-accent-foreground outline outline-1 outline-border",
+        true: "bg-accent/20 text-accent-foreground outline outline-1 outline-border",
         false: "",
       },
     },
@@ -182,7 +182,7 @@ export const ListItem = memo(function ListItem({
         <div
           className={cn(
             "text-sm font-medium truncate",
-            active && "text-primary",
+            active && "text-primary font-bold",
             "w-full",
           )}
         >

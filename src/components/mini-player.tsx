@@ -270,7 +270,7 @@ export default function MiniPlayer() {
           <Art track={currentTrack} className="h-10 w-10 rounded-sm object-cover bg-muted shrink-0" />
 
           <div className="flex flex-col flex-1 min-w-0 justify-center">
-            <p className="text-foreground font-bold truncate text-sm leading-tight">
+            <p className="text-primary font-bold truncate text-sm leading-tight">
               {currentTrack?.title || "No Track"}
             </p>
             <p className="text-muted-foreground text-xs truncate leading-tight">
@@ -329,7 +329,7 @@ export default function MiniPlayer() {
         <div className="flex items-center gap-3 flex-1 min-h-0">
           <Art track={currentTrack} className="size-28 rounded-md object-cover bg-muted shrink-0" />
           <div className="flex flex-col min-w-0 justify-center">
-            <p className="text-foreground font-bold text-md leading-tight truncate">
+            <p className="text-primary font-bold text-md leading-tight truncate">
               {currentTrack?.title || "No Playing Track"}
             </p>
             <p className="text-muted-foreground text-sm truncate">
@@ -385,7 +385,7 @@ export default function MiniPlayer() {
 
       <div className="flex items-center justify-between gap-3 shrink-0">
         <div className="min-w-0 flex-1">
-          <p className="text-foreground font-bold text-base truncate leading-tight">
+          <p className="text-primary font-bold text-base truncate leading-tight">
             {currentTrack?.title || "No Track"}
           </p>
           <p className="text-muted-foreground text-sm truncate leading-tight">

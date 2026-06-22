@@ -35,7 +35,8 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
     const check = () => {
       if (artistContainerRef.current && artistContentRef.current) {
         setArtistOverflows(
-          artistContentRef.current.scrollWidth > artistContainerRef.current.clientWidth
+          artistContentRef.current.scrollWidth >
+            artistContainerRef.current.clientWidth,
         );
       }
     };
@@ -89,12 +90,12 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
           style={style}
           onClick={handlePlayClick}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               handlePlayClick(e as unknown as React.MouseEvent);
             }
           }}
-          className={`flex items-center gap-3 p-2 rounded-md group hover:bg-accent cursor-pointer w-full text-left ${
-            isActive ? "bg-accent" : ""
+          className={`flex items-center gap-3 p-2 rounded-md group hover:bg-accent/10 cursor-pointer w-full text-left ${
+            isActive ? "bg-accent/20" : ""
           }`}
         >
           {/* Drag Handle - Always visible now */}
@@ -109,22 +110,20 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
           </div>
 
           {/* Type/Status Indicator */}
-          {
-            isActive ? (
-              <div className="text-primary shrink-0">
-                {status === "playing" ? (
-                  <Pause size={16} fill="currentColor" />
-                ) : (
-                  <Play size={16} fill="currentColor" />
-                )}
-              </div>
-            ) : null
-          }
+          {isActive ? (
+            <div className="text-primary shrink-0">
+              {status === "playing" ? (
+                <Pause size={16} fill="currentColor" />
+              ) : (
+                <Play size={16} fill="currentColor" />
+              )}
+            </div>
+          ) : null}
 
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <div
               className={`text-sm font-medium w-full ${
-                isActive ? "text-primary" : "text-foreground"
+                isActive ? "text-primary font-bold" : "text-foreground"
               }`}
             >
               <ScrollingText>{track.title}</ScrollingText>
@@ -137,11 +136,14 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
                 ref={artistContentRef}
                 className={cn(
                   "inline-block transition-transform will-change-transform",
-                  artistOverflows && "motion-safe:hover:animate-scroll-text motion-safe:group-hover:animate-scroll-text",
+                  artistOverflows &&
+                    "motion-safe:hover:animate-scroll-text motion-safe:group-hover:animate-scroll-text",
                 )}
                 style={
                   artistOverflows
-                    ? { animationDuration: `${Math.min(artistText.length * 150, 10000)}ms` }
+                    ? {
+                        animationDuration: `${Math.min(artistText.length * 150, 10000)}ms`,
+                      }
                     : undefined
                 }
               >
