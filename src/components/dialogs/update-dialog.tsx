@@ -53,6 +53,7 @@ export function UpdateDialog({
       description={`Version ${updateManifest?.version} is ready to download.`}
       footer={footer}
       contentClassName="max-w-2xl max-h-[80vh] flex flex-col"
+      className="flex flex-col flex-1 min-h-0"
     >
       <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 my-4 p-4 rounded-md bg-card border border-border">
         <div
