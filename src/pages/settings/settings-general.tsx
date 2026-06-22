@@ -24,7 +24,7 @@ export function SettingsGeneral() {
               <div className="font-medium">Close to Tray</div>
             </div>
             <div className="text-sm text-muted-foreground pl-6">
-              Minimize to system tray instead of quitting
+              Closing the window minimizes to tray. When music is playing, a dialog will ask whether to minimize or quit.
             </div>
           </div>
           <Switch checked={closeToTray} onCheckedChange={setCloseToTray} />

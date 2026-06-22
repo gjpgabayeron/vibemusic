@@ -1,5 +1,4 @@
 import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Toaster } from "@/components/ui/sonner";
 import {
   AlertDialog,
@@ -15,6 +14,10 @@ import {
 interface AppDialogsProps {
   isQuitDialogOpen: boolean;
   setIsQuitDialogOpen: (open: boolean) => void;
+  onConfirmQuit: () => void;
+  isCloseToTrayDialogOpen: boolean;
+  setIsCloseToTrayDialogOpen: (open: boolean) => void;
+  onConfirmCloseToTrayHide: () => void;
   showProfileSwitchWarning: boolean;
   setShowProfileSwitchWarning: (open: boolean) => void;
   confirmProfileSwitch: () => void;
@@ -26,6 +29,10 @@ interface AppDialogsProps {
 export function AppDialogs({
   isQuitDialogOpen,
   setIsQuitDialogOpen,
+  onConfirmQuit,
+  isCloseToTrayDialogOpen,
+  setIsCloseToTrayDialogOpen,
+  onConfirmCloseToTrayHide,
   showProfileSwitchWarning,
   setShowProfileSwitchWarning,
   confirmProfileSwitch,
@@ -42,7 +49,18 @@ export function AppDialogs({
         description='Playback will stop. You can enable "Close to Tray" in settings to keep music playing in the background.'
         confirmText="Quit"
         variant="destructive"
-        onConfirm={() => getCurrentWindow().destroy()}
+        onConfirm={onConfirmQuit}
+      />
+      <ConfirmDialog
+        open={isCloseToTrayDialogOpen}
+        onOpenChange={setIsCloseToTrayDialogOpen}
+        title="Keep Playing in Background?"
+        description="Music is currently playing. Minimize to tray to keep playback active in the background, or stop playback and quit the app."
+        confirmText="Minimize to Tray"
+        cancelText="Stop & Quit"
+        variant="primary"
+        onConfirm={onConfirmCloseToTrayHide}
+        onCancel={onConfirmQuit}
       />
       <ConfirmDialog
         open={showProfileSwitchWarning}

@@ -12,6 +12,8 @@ import { BackgroundGradient } from "./components/background-gradient";
 import { SidebarSection } from "./components/sidebar-section";
 import { GlobalSearch } from "./components/dialogs/global-search";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { exit } from "@tauri-apps/plugin-process";
 
 import { getDominantColor } from "./lib/color-utils";
 import {
@@ -19,6 +21,7 @@ import {
   useRefreshInterceptor,
   useScanProgressListener,
 } from "@/hooks/use-app-init";
+import type { CloseAction } from "@/hooks/use-app-init";
 import { useFolderImport } from "@/hooks/use-folder-import";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useNavigationStore, Page } from "@/stores/navigation-store";
@@ -42,6 +45,7 @@ export default function App() {
   const status = useAudioStore((s) => s.status);
   const [gradientColor, setGradientColor] = useState<string>("transparent");
   const [isQuitDialogOpen, setIsQuitDialogOpen] = useState(false);
+  const [isCloseToTrayDialogOpen, setIsCloseToTrayDialogOpen] = useState(false);
   const [showProfileSwitchWarning, setShowProfileSwitchWarning] = useState(false);
 
   const hasCheckedForUpdate = useRef(false);
@@ -159,7 +163,31 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSettingsLoading, activeProfileId, fetchLibrary]);
 
-  useWindowCloseHandler(() => setIsQuitDialogOpen(true));
+  const handleQuitApp = async () => {
+    await stop();
+    setIsQuitDialogOpen(false);
+    setIsCloseToTrayDialogOpen(false);
+    await exit(0);
+  };
+
+  const handleCloseToTrayHide = async () => {
+    setIsCloseToTrayDialogOpen(false);
+    await getCurrentWindow().hide();
+  };
+
+  useWindowCloseHandler((action: CloseAction) => {
+    switch (action) {
+      case "show-quit-dialog":
+        setIsQuitDialogOpen(true);
+        break;
+      case "show-close-to-tray-dialog":
+        setIsCloseToTrayDialogOpen(true);
+        break;
+      case "quit-directly":
+        handleQuitApp();
+        break;
+    }
+  });
 
   // Listen for global scan progress to refresh library - extracted to custom hook
   useScanProgressListener(fetchLibrary);
@@ -217,6 +245,10 @@ export default function App() {
         activeProfileId={activeProfileId}
         isQuitDialogOpen={isQuitDialogOpen}
         setIsQuitDialogOpen={setIsQuitDialogOpen}
+        onConfirmQuit={handleQuitApp}
+        isCloseToTrayDialogOpen={isCloseToTrayDialogOpen}
+        setIsCloseToTrayDialogOpen={setIsCloseToTrayDialogOpen}
+        onConfirmCloseToTrayHide={handleCloseToTrayHide}
         showProfileSwitchWarning={showProfileSwitchWarning}
         setShowProfileSwitchWarning={setShowProfileSwitchWarning}
         confirmProfileSwitch={confirmProfileSwitch}
@@ -278,6 +310,10 @@ export default function App() {
       <AppDialogs
         isQuitDialogOpen={isQuitDialogOpen}
         setIsQuitDialogOpen={setIsQuitDialogOpen}
+        onConfirmQuit={handleQuitApp}
+        isCloseToTrayDialogOpen={isCloseToTrayDialogOpen}
+        setIsCloseToTrayDialogOpen={setIsCloseToTrayDialogOpen}
+        onConfirmCloseToTrayHide={handleCloseToTrayHide}
         showProfileSwitchWarning={showProfileSwitchWarning}
         setShowProfileSwitchWarning={setShowProfileSwitchWarning}
         confirmProfileSwitch={confirmProfileSwitch}

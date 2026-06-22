@@ -3,13 +3,22 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { logger } from "@/lib/logger";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useAudioStore } from "@/stores/audio-store";
+
+export type CloseAction =
+  | "show-quit-dialog"
+  | "show-close-to-tray-dialog"
+  | "quit-directly";
 
 /**
  * Custom hook that handles the window close behavior (close-to-tray or quit dialog).
- * @param onQuitRequested - Callback when user needs to confirm quit
+ * Reads playback state to decide which dialog to show (or quits silently when idle).
+ * @param onClose - Callback with the action to take
  */
-export function useWindowCloseHandler(onQuitRequested: () => void) {
+export function useWindowCloseHandler(onClose: (action: CloseAction) => void) {
   const hasSetup = useRef(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (hasSetup.current) return;
@@ -17,25 +26,33 @@ export function useWindowCloseHandler(onQuitRequested: () => void) {
 
     const appWindow = getCurrentWindow();
     const unlistenPromise = appWindow.onCloseRequested(async (event) => {
-      // Prevent default close to handle everything manually
       event.preventDefault();
 
       const { closeToTray } = useSettingsStore.getState();
+      const { status } = useAudioStore.getState();
+      const isPlaying = status === "playing" || status === "paused";
 
       if (closeToTray) {
-        await appWindow.hide();
+        if (isPlaying) {
+          onCloseRef.current("show-close-to-tray-dialog");
+        } else {
+          await appWindow.hide();
+        }
       } else {
-        onQuitRequested();
+        if (isPlaying) {
+          onCloseRef.current("show-quit-dialog");
+        } else {
+          onCloseRef.current("quit-directly");
+        }
       }
     });
 
-    // Show window once App is ready to prevent white flash
     appWindow.show();
 
     return () => {
       unlistenPromise.then((unlisten) => unlisten());
     };
-  }, [onQuitRequested]);
+  }, []);
 }
 
 /**

@@ -13,6 +13,10 @@ interface ShellStatesProps {
   isRefreshWarningOpen: boolean;
   setIsRefreshWarningOpen: (open: boolean) => void;
   handleConfirmRefresh: () => Promise<void>;
+  onConfirmQuit: () => void;
+  isCloseToTrayDialogOpen: boolean;
+  setIsCloseToTrayDialogOpen: (open: boolean) => void;
+  onConfirmCloseToTrayHide: () => void;
 }
 
 export function ShellStates({
@@ -26,6 +30,10 @@ export function ShellStates({
   isRefreshWarningOpen,
   setIsRefreshWarningOpen,
   handleConfirmRefresh,
+  onConfirmQuit,
+  isCloseToTrayDialogOpen,
+  setIsCloseToTrayDialogOpen,
+  onConfirmCloseToTrayHide,
 }: ShellStatesProps) {
   if (isProfilesLoading) {
     return (
@@ -51,6 +59,10 @@ export function ShellStates({
         <AppDialogs
           isQuitDialogOpen={isQuitDialogOpen}
           setIsQuitDialogOpen={setIsQuitDialogOpen}
+          onConfirmQuit={onConfirmQuit}
+          isCloseToTrayDialogOpen={isCloseToTrayDialogOpen}
+          setIsCloseToTrayDialogOpen={setIsCloseToTrayDialogOpen}
+          onConfirmCloseToTrayHide={onConfirmCloseToTrayHide}
           showProfileSwitchWarning={showProfileSwitchWarning}
           setShowProfileSwitchWarning={setShowProfileSwitchWarning}
           confirmProfileSwitch={confirmProfileSwitch}
