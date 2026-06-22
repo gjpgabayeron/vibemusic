@@ -162,7 +162,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: build
+    needs: [build, bump]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -204,7 +204,7 @@ jobs:
         run: |
           $newAssets = @()
           Get-ChildItem -Path artifacts -Recurse -File | Where-Object {
-            $_.Name -like 'vibemusic*' -or $_.Name -eq 'latest.json'
+            $_.Name -match '^vibemusic[_-]' -or $_.Name -match '^vibemusic\.app' -or $_.Name -eq 'latest.json'
           } | ForEach-Object {
             $newAssets += $_.Name
             Write-Host "Uploading: $($_.Name)"
@@ -258,7 +258,7 @@ jobs:
 
           $platforms = @{}
           Get-ChildItem -Path artifacts -Recurse -File | Where-Object {
-            $_.Name -like 'vibemusic*'
+            $_.Name -match '^vibemusic[_-]' -or $_.Name -match '^vibemusic\.app'
           } | ForEach-Object {
             $filename = $_.Name
             foreach ($key in $patterns.Keys) {

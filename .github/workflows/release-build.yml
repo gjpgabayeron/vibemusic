@@ -96,7 +96,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: build
+    needs: [build, prepare]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -119,7 +119,7 @@ jobs:
         run: |
           $tag = "${{ github.event.release.tag_name }}"
           Get-ChildItem -Path artifacts -Recurse -File | Where-Object {
-            $_.Name -like 'vibemusic*' -or $_.Name -eq 'latest.json'
+            $_.Name -match '^vibemusic[_-]' -or $_.Name -match '^vibemusic\.app' -or $_.Name -eq 'latest.json'
           } | ForEach-Object {
             Write-Host "Uploading: $($_.Name)"
             gh release upload $tag "$($_.FullName)" --clobber
@@ -145,7 +145,7 @@ jobs:
 
           $platforms = @{}
           Get-ChildItem -Path artifacts -Recurse -File | Where-Object {
-            $_.Name -like 'vibemusic*'
+            $_.Name -match '^vibemusic[_-]' -or $_.Name -match '^vibemusic\.app'
           } | ForEach-Object {
             $filename = $_.Name
             foreach ($key in $patterns.Keys) {
