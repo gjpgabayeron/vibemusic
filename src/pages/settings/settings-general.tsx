@@ -3,12 +3,10 @@ import { Settings, Power, HardDrive } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings-store";
 
 export function SettingsGeneral() {
-  const {
-    closeToTray,
-    setCloseToTray,
-    scanOnStartup,
-    setScanOnStartup,
-  } = useSettingsStore();
+  const closeToTray = useSettingsStore((s) => s.closeToTray);
+  const setCloseToTray = useSettingsStore((s) => s.setCloseToTray);
+  const scanOnStartup = useSettingsStore((s) => s.scanOnStartup);
+  const setScanOnStartup = useSettingsStore((s) => s.setScanOnStartup);
 
   return (
     <div className="space-y-6">

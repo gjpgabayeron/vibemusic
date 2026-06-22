@@ -19,7 +19,7 @@ export default function ProfileSelectionPage() {
     selectProfile,
     deleteProfile,
   } = useProfileStore();
-  const { loadSettings } = useSettingsStore();
+  const loadSettings = useSettingsStore((s) => s.loadSettings);
 
   const [isManageMode, setIsManageMode] = useState(false); // Renamed from isEditing for clarity
   const [dialogOpen, setDialogOpen] = useState(false);

@@ -14,8 +14,9 @@ import { Input } from "@/components/ui/input";
 export default function ArtistsPage() {
   const artists = useLibraryStore((s) => s.artists);
   const isLoading = useLibraryStore((s) => s.isLoading);
-  const { artistsSortKey, artistsSortDirection, setArtistsSort } =
-    useSettingsStore();
+  const artistsSortKey = useSettingsStore((s) => s.artistsSortKey);
+  const artistsSortDirection = useSettingsStore((s) => s.artistsSortDirection);
+  const setArtistsSort = useSettingsStore((s) => s.setArtistsSort);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredAndSortedArtists = useMemo(() => {

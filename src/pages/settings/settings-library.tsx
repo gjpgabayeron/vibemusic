@@ -10,8 +10,9 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { useLibraryStore } from "@/stores/library-store";
 
 export function SettingsLibrary() {
-  const { libraryPaths, addLibraryPath, removeLibraryPath } =
-    useSettingsStore();
+  const libraryPaths = useSettingsStore((s) => s.libraryPaths);
+  const addLibraryPath = useSettingsStore((s) => s.addLibraryPath);
+  const removeLibraryPath = useSettingsStore((s) => s.removeLibraryPath);
   const fetchLibrary = useLibraryStore((s) => s.fetchLibrary);
   const [isRescanning, setIsRescanning] = useState(false);
   const [isPruning, setIsPruning] = useState(false);

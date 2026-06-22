@@ -74,7 +74,8 @@ function SortableItem({
 }
 
 export function SidebarCustomizer() {
-  const { sidebarItems, setSidebarItems } = useSettingsStore();
+  const sidebarItems = useSettingsStore((s) => s.sidebarItems);
+  const setSidebarItems = useSettingsStore((s) => s.setSidebarItems);
 
   const sensors = useSensors(
     useSensor(PointerSensor),

@@ -12,14 +12,12 @@ import { ChevronDown, Speaker, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 export function SettingsAudio() {
-  const {
-    selectedDevice,
-    audioDevices,
-    setAudioDevice,
-    refreshAudioDevices,
-    crossfadeDuration,
-    setCrossfadeDuration,
-  } = useSettingsStore();
+  const selectedDevice = useSettingsStore((s) => s.selectedDevice);
+  const audioDevices = useSettingsStore((s) => s.audioDevices);
+  const setAudioDevice = useSettingsStore((s) => s.setAudioDevice);
+  const refreshAudioDevices = useSettingsStore((s) => s.refreshAudioDevices);
+  const crossfadeDuration = useSettingsStore((s) => s.crossfadeDuration);
+  const setCrossfadeDuration = useSettingsStore((s) => s.setCrossfadeDuration);
 
   const [isRefreshingDevices, setIsRefreshingDevices] = useState(false);
 

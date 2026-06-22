@@ -13,14 +13,14 @@ import { SortDropdown } from "@/components/shared/sort-dropdown";
 export default function AlbumsPage() {
   const albums = useLibraryStore((s) => s.albums);
   const isLoading = useLibraryStore((s) => s.isLoading);
-  const { albumsSortKey, albumsSortDirection, setAlbumsSort } =
-    useSettingsStore();
+  const albumsSortKey = useSettingsStore((s) => s.albumsSortKey);
+  const albumsSortDirection = useSettingsStore((s) => s.albumsSortDirection);
+  const setAlbumsSort = useSettingsStore((s) => s.setAlbumsSort);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredAndSortedAlbums = useMemo(() => {
     let result = [...albums];
 
-    // Filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -30,7 +30,6 @@ export default function AlbumsPage() {
       );
     }
 
-    // Sort
     return result.sort((a, b) => {
       let valA: string | number = "";
       let valB: string | number = "";
@@ -86,7 +85,7 @@ export default function AlbumsPage() {
       <VirtualizedGrid
         items={filteredAndSortedAlbums}
         renderItem={(album) => <AlbumCard key={album.id} album={album} />}
-        itemHeight={220} // Similar height to artist cards
+        itemHeight={220}
         emptyState={
           !isLoading ? (
             searchQuery ? (

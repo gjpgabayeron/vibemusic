@@ -12,18 +12,16 @@ import { ChevronDown, Moon, Sun, Monitor, Palette, Layout } from "lucide-react";
 import { SidebarCustomizer } from "./sidebar-customizer";
 
 export function SettingsAppearance() {
-  const {
-    theme,
-    setTheme,
-    dynamicGradient,
-    setDynamicGradient,
-    defaultPage,
-    setDefaultPage,
-    miniPlayerStyle,
-    setMiniPlayerStyle,
-    miniPlayerPosition,
-    setMiniPlayerPosition,
-  } = useSettingsStore();
+  const theme = useSettingsStore((s) => s.theme);
+  const setTheme = useSettingsStore((s) => s.setTheme);
+  const dynamicGradient = useSettingsStore((s) => s.dynamicGradient);
+  const setDynamicGradient = useSettingsStore((s) => s.setDynamicGradient);
+  const defaultPage = useSettingsStore((s) => s.defaultPage);
+  const setDefaultPage = useSettingsStore((s) => s.setDefaultPage);
+  const miniPlayerStyle = useSettingsStore((s) => s.miniPlayerStyle);
+  const setMiniPlayerStyle = useSettingsStore((s) => s.setMiniPlayerStyle);
+  const miniPlayerPosition = useSettingsStore((s) => s.miniPlayerPosition);
+  const setMiniPlayerPosition = useSettingsStore((s) => s.setMiniPlayerPosition);
 
   return (
     <div className="space-y-6">
