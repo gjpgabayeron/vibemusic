@@ -63,38 +63,35 @@ const labelMap: Record<string, string> = {
     <aside id="navigation-menu" className="w-full flex flex-col gap-4">
       <div className="items-center h-min w-full flex flex-col gap-2 rounded-lg outline outline-border px-1 py-4">
         <div className="flex flex-col gap-2 shrink-0">
-          {sidebarItems
-            .filter((item) => !item.hidden)
-            .map((item) => {
-              const isSearch = item.id === "search";
-              // For pages, id matches the page name. For search, it's null page.
-              const isActive = !isSearch && currentPage === item.id;
-
-              return (
-                <Tooltip key={item.id} delayDuration={1000}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon-lg"
-                      variant="ghost"
-                      onClick={() => {
-                        if (isSearch) toggleSearch();
-                        else setPage(item.id as Page);
-                      }}
-                      className={
-                        isActive || (isSearch && isSearchOpen)
-                          ? "text-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      }
-                    >
-                      {iconMap[item.id] || <Disc />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    {labelMap[item.id] || item.id}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
+          {sidebarItems.flatMap((item) => {
+            if (item.hidden) return [];
+            const isSearch = item.id === "search";
+            const isActive = !isSearch && currentPage === item.id;
+            return (
+              <Tooltip key={item.id} delayDuration={1000}>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon-lg"
+                    variant="ghost"
+                    onClick={() => {
+                      if (isSearch) toggleSearch();
+                      else setPage(item.id as Page);
+                    }}
+                    className={
+                      isActive || (isSearch && isSearchOpen)
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }
+                  >
+                    {iconMap[item.id] || <Disc />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {labelMap[item.id] || item.id}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
         </div>
       </div>
       <div
