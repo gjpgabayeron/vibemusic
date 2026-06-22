@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Play, Shuffle, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ArtworkImage } from "@/components/shared/artwork-image";
@@ -35,21 +35,18 @@ export function PlaylistHero({
   className,
   children,
 }: PlaylistHeroProps) {
-  const [imageError, setImageError] = useState(false);
-
-  useEffect(() => {
-    setImageError(false);
-  }, [coverUrl]);
+  const [failedCoverUrl, setFailedCoverUrl] = useState<string | null>(null);
+  const showImage = !!coverUrl && failedCoverUrl !== coverUrl;
 
   return (
     <div className={cn("flex gap-6 mb-6 px-2", className)}>
       <div className="w-40 h-40 rounded-lg bg-linear-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center text-muted-foreground text-6xl font-bold select-none shrink-0 overflow-hidden shadow-xl">
-        {coverUrl && !imageError ? (
+        {showImage ? (
           <ArtworkImage
             src={coverUrl}
             alt={title}
             className="w-full h-full object-cover"
-            onError={() => setImageError(true)}
+            onError={() => setFailedCoverUrl(coverUrl ?? null)}
           />
         ) : (
           title.slice(0, 2).toUpperCase()
