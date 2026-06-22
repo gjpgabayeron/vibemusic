@@ -34,10 +34,8 @@ import { toast } from "sonner";
 import { useUpdateStore } from "./stores/update-store";
 
 
-import MiniPlayer from "./components/mini-player";
 
 export default function App() {
-  const isMiniPlayer = useNavigationStore((s) => s.isMiniPlayer);
   const sidePanel = useAudioStore((s) => s.sidePanel);
   const initListeners = useAudioStore((s) => s.initListeners);
   const currentTrack = useAudioStore((s) => s.currentTrack);
@@ -232,56 +230,49 @@ export default function App() {
   return (
     <main
       id="app"
-      className={`selection:bg-white/10 h-dvh w-dvw overflow-hidden flex flex-col relative ${
-        !isMiniPlayer ? "px-6 gap-4" : "p-0"
-      } ${resolvedTheme === "dark" ? "dark" : ""}`}
+      className={`selection:bg-white/10 h-dvh w-dvw overflow-hidden flex flex-col relative px-6 gap-4 ${
+        resolvedTheme === "dark" ? "dark" : ""
+      }`}
     >
-      {/* Custom Title Bar */}
-      {!isMiniPlayer && <TitleBar />}
+      <TitleBar />
 
-      {isMiniPlayer ? (
-        <MiniPlayer />
-      ) : (
-        <>
-          <BackgroundGradient gradientColor={gradientColor} />
+      <BackgroundGradient gradientColor={gradientColor} />
 
-          <div className="flex flex-1 gap-6 min-h-0 relative z-10 pt-10">
-            <SidebarSection
-              activeProfile={activeProfile}
-              onProfileClick={handleProfileClick}
-              onImport={handleFolderImport}
-              isScanning={isScanning}
-            />
+      <div className="flex flex-1 gap-6 min-h-0 relative z-10 pt-10">
+        <SidebarSection
+          activeProfile={activeProfile}
+          onProfileClick={handleProfileClick}
+          onImport={handleFolderImport}
+          isScanning={isScanning}
+        />
 
-            {/* Main Content */}
-            <div className="flex-1 min-w-0 min-h-0 flex">
-              <MainContent />
+        {/* Main Content */}
+        <div className="flex-1 min-w-0 min-h-0 flex">
+          <MainContent />
 
-              {/* Queue Menu / Track Detail Panel */}
-              <div
-                className={`pt-6 shrink-0 h-full min-h-0 overflow-hidden transition-all duration-300 ease-in-out z-40 ${
-                  sidePanel !== "none" ? "w-96 p-1" : "w-0 p-0"
-                } ${isPlayerVisible ? "pb-39" : "pb-6"}`}
-              >
-                <QueueMenu />
-                <TrackDetailPanel />
-                <LyricsPanel />
-              </div>
-            </div>
-          </div>
-
-          {/* Music Controller */}
+          {/* Queue Menu / Track Detail Panel */}
           <div
-            className={`fixed bottom-0 left-0 right-0 p-6 transition-all duration-300 ease-in-out z-50 pointer-events-none ${
-              isPlayerVisible
-                ? "translate-y-0 opacity-100"
-                : "translate-y-full opacity-0"
-            }`}
+            className={`pt-6 shrink-0 h-full min-h-0 overflow-hidden transition-all duration-300 ease-in-out z-40 ${
+              sidePanel !== "none" ? "w-96 p-1" : "w-0 p-0"
+            } ${isPlayerVisible ? "pb-39" : "pb-6"}`}
           >
-            <MusicController />
+            <QueueMenu />
+            <TrackDetailPanel />
+            <LyricsPanel />
           </div>
-        </>
-      )}
+        </div>
+      </div>
+
+      {/* Music Controller */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 p-6 transition-all duration-300 ease-in-out z-50 pointer-events-none ${
+          isPlayerVisible
+            ? "translate-y-0 opacity-100"
+            : "translate-y-full opacity-0"
+        }`}
+      >
+        <MusicController />
+      </div>
       <GlobalSearch />
 
       <AppDialogs

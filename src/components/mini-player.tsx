@@ -24,11 +24,27 @@ import {
   useDuration,
 } from "@/stores/audio-store";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { emit } from "@tauri-apps/api/event";
 import { useState, useEffect, useRef } from "react";
 import placeholderArt from "@/assets/placeholder-art.png";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useNavigationStore } from "@/stores/navigation-store";
 import type { Track } from "@/lib/api";
+
+async function maximizeMiniPlayer() {
+  try {
+    const label = getCurrentWindow().label;
+    if (label === "miniplayer") {
+      await emit("miniplayer:close");
+      await getCurrentWindow().hide();
+    } else {
+      await useNavigationStore.getState().toggleMiniPlayer();
+    }
+  } catch {
+    await useNavigationStore.getState().toggleMiniPlayer();
+  }
+}
 
 // --- HELPER COMPONENTS ---
 
@@ -85,7 +101,6 @@ function MiniPlayerControls({
     toggleMute,
   } = useAudioStore.getState();
 
-  const toggleMiniPlayer = useNavigationStore((s) => s.toggleMiniPlayer);
   const isPlaying = status === "playing";
 
   const handlePlayPause = () => {
@@ -163,7 +178,7 @@ function MiniPlayerControls({
       )}
 
       {showMaximize && (
-        <Button variant="ghost" size="icon" onClick={() => toggleMiniPlayer()}>
+        <Button variant="ghost" size="icon" onClick={maximizeMiniPlayer}>
           <Maximize2
             size={size === "small" ? 16 : 20}
             className="text-muted-foreground hover:text-foreground"
@@ -216,7 +231,6 @@ export default function MiniPlayer() {
   const position = usePosition();
   const duration = useDuration();
   const miniPlayerStyle = useSettingsStore((s) => s.miniPlayerStyle);
-  const toggleMiniPlayer = useNavigationStore((s) => s.toggleMiniPlayer);
 
   // Use hook for actions to ensure stability
   const { seek, setDraggingSlider, pause, resume } = useAudioStore.getState();
@@ -250,43 +264,45 @@ export default function MiniPlayer() {
 
   if (miniPlayerStyle === "bar") {
     return (
-      <div className="w-full h-full bg-background flex items-center px-3 gap-3 overflow-hidden border border-border select-none relative group">
+      <div className="w-full h-full bg-background flex items-stretch px-3 gap-3 overflow-hidden border border-border select-none relative group">
         <DragHandle className="top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100" />
-        <Art track={currentTrack} className="h-12 w-12 rounded-sm object-cover bg-muted shrink-0" />
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Art track={currentTrack} className="h-10 w-10 rounded-sm object-cover bg-muted shrink-0" />
 
-        <div className="flex flex-col flex-1 min-w-0 justify-center">
-          <p className="text-foreground font-bold truncate text-sm leading-tight">
-            {currentTrack?.title || "No Track"}
-          </p>
-          <p className="text-muted-foreground text-xs truncate leading-tight">
-            {currentTrack?.artist || "Unknown Artist"}
-          </p>
-        </div>
+          <div className="flex flex-col flex-1 min-w-0 justify-center">
+            <p className="text-foreground font-bold truncate text-sm leading-tight">
+              {currentTrack?.title || "No Track"}
+            </p>
+            <p className="text-muted-foreground text-xs truncate leading-tight">
+              {currentTrack?.artist || "Unknown Artist"}
+            </p>
+          </div>
 
-        <div className="flex items-center gap-1 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handlePlayPause}
-          >
-            {isPlaying ? (
-              <Pause size={18} className="fill-foreground" />
-            ) : (
-              <Play size={18} className="fill-foreground ml-0.5" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => toggleMiniPlayer()}
-          >
-            <Maximize2
-              size={16}
-              className="text-muted-foreground hover:text-foreground"
-            />
-          </Button>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handlePlayPause}
+            >
+              {isPlaying ? (
+                <Pause size={16} className="fill-foreground" />
+              ) : (
+                <Play size={16} className="fill-foreground ml-0.5" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={maximizeMiniPlayer}
+            >
+              <Maximize2
+                size={14}
+                className="text-muted-foreground hover:text-foreground"
+              />
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -294,7 +310,7 @@ export default function MiniPlayer() {
 
   if (miniPlayerStyle === "wide") {
     return (
-      <div className="w-full h-full bg-background flex flex-col px-4 py-3 gap-6 overflow-hidden border border-border select-none relative group">
+      <div className="w-full h-full bg-background flex flex-col px-4 py-3 gap-3 overflow-hidden border border-border select-none relative group">
         <DragHandle
           className="top-2 right-12 opacity-0 group-hover:opacity-100 h-8 w-8"
           iconSize={18}
@@ -304,14 +320,14 @@ export default function MiniPlayer() {
           variant="ghost"
           size="icon"
           className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => toggleMiniPlayer()}
+          onClick={maximizeMiniPlayer}
         >
           <Maximize2 size={18} />
         </Button>
 
         {/* Top: Art + Info */}
-        <div className="flex items-center gap-3 min-h-0 h-full">
-          <Art track={currentTrack} className="aspect-square h-full rounded-md object-cover bg-muted shrink-0" />
+        <div className="flex items-center gap-3 flex-1 min-h-0">
+          <Art track={currentTrack} className="size-28 rounded-md object-cover bg-muted shrink-0" />
           <div className="flex flex-col min-w-0 justify-center">
             <p className="text-foreground font-bold text-md leading-tight truncate">
               {currentTrack?.title || "No Playing Track"}
@@ -323,7 +339,7 @@ export default function MiniPlayer() {
         </div>
 
         {/* Bottom: Progress + Controls */}
-        <div className="flex flex-col gap-1 shrink-0 ">
+        <div className="flex flex-col gap-1 shrink-0">
           <MiniPlayerProgressBar
             sliderValue={sliderValue}
             duration={duration}
@@ -381,7 +397,7 @@ export default function MiniPlayer() {
           variant="ghost"
           size="icon"
           className="shrink-0 text-muted-foreground hover:text-foreground"
-          onClick={() => toggleMiniPlayer()}
+          onClick={maximizeMiniPlayer}
         >
           <Maximize2 size={20} />
         </Button>

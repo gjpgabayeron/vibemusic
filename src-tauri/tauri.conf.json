@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "vibemusic",
         "width": 1280,
         "height": 720,
@@ -20,6 +21,16 @@
         "minWidth": 1280,
         "minHeight": 720,
         "visible": false
+      },
+      {
+        "label": "miniplayer",
+        "title": "vibemusic",
+        "width": 300,
+        "height": 360,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "visible": false,
+        "url": "/?mode=miniplayer"
       }
     ],
     "security": {

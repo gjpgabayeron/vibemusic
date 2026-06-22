@@ -1,11 +1,9 @@
 import { create } from "zustand";
-import {
-  getCurrentWindow,
-  LogicalSize,
-  currentMonitor,
-  PhysicalPosition,
-} from "@tauri-apps/api/window";
+import { getCurrentWindow, currentMonitor, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { emit, listen } from "@tauri-apps/api/event";
 import { useSettingsStore } from "./settings-store";
+import { useAudioStore } from "./audio-store";
 import { logger } from "@/lib/logger";
 
 // --- Types ---
@@ -31,9 +29,6 @@ interface NavigationState {
   detailView: DetailView;
   isSearchOpen: boolean;
   isMiniPlayer: boolean;
-  previousWindowSize: { width: number; height: number } | null;
-  previousWindowPosition: { x: number; y: number } | null;
-  wasMaximized: boolean;
 }
 
 interface NavigationActions {
@@ -60,9 +55,6 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
   detailView: null,
   isSearchOpen: false,
   isMiniPlayer: false,
-  previousWindowSize: null,
-  previousWindowPosition: null,
-  wasMaximized: false,
 
   // Actions
   setPage: (page) => set({ currentPage: page, detailView: null }),
@@ -91,84 +83,24 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
       const state = useNavigationStore.getState();
       const appWindow = getCurrentWindow();
       const settings = useSettingsStore.getState();
+      const audioState = useAudioStore.getState();
 
       if (state.isMiniPlayer) {
-        // EXITING MINI PLAYER
-        logger.debug("Exiting Mini Player...");
-        await Promise.all([
-          appWindow.setAlwaysOnTop(false),
-          // Restore min size constraints for main app
-          appWindow.setMinSize(new LogicalSize(1280, 720)),
-          appWindow.setMaxSize(null), // Unset max size
-        ]);
-
-        // If window was maximized before, restore to maximized state
-        if (state.wasMaximized) {
-          await appWindow.maximize();
-        } else {
-          // Restore Size
-          if (state.previousWindowSize) {
-            await appWindow.setSize(
-              new LogicalSize(
-                state.previousWindowSize.width,
-                state.previousWindowSize.height
-              )
-            );
-          } else {
-            await appWindow.setSize(new LogicalSize(1280, 720));
-          }
-
-          // Restore Position
-          if (state.previousWindowPosition) {
-            await appWindow.setPosition(
-              new PhysicalPosition(
-                state.previousWindowPosition.x,
-                state.previousWindowPosition.y
-              )
-            );
-          } else {
-            // Default to top-left if no previous position
-            await appWindow.setPosition(new PhysicalPosition(50, 50));
-          }
+        // EXITING - fallback if close listener didn't fire
+        logger.debug("Exiting Mini Player via main window...");
+        const miniplayer = await WebviewWindow.getByLabel("miniplayer");
+        if (miniplayer) {
+          try { await miniplayer.hide(); } catch { /* window may already be gone */ }
         }
-
-        set({
-          isMiniPlayer: false,
-          previousWindowSize: null,
-          previousWindowPosition: null,
-          wasMaximized: false,
-        });
+        await appWindow.show();
+        set({ isMiniPlayer: false, isSearchOpen: false });
       } else {
         // ENTERING MINI PLAYER
         logger.debug("Entering Mini Player...");
 
-        // Check if currently maximized before switching
-        const [isCurrentlyMaximized, factor, size, position] = await Promise.all([
-          appWindow.isMaximized(),
-          appWindow.scaleFactor(),
-          appWindow.innerSize(),
-          appWindow.outerPosition(),
-        ]);
-        const logicalSize = size.toLogical(factor);
-
-        set({
-          previousWindowSize: {
-            width: logicalSize.width,
-            height: logicalSize.height,
-          },
-          previousWindowPosition: {
-            x: position.x,
-            y: position.y,
-          },
-          wasMaximized: isCurrentlyMaximized,
-        });
-
-        await appWindow.setAlwaysOnTop(true);
-
         let width = 300;
-        let height = 350;
+        let height = 360;
 
-        // "square" | "wide" | "bar"
         switch (settings.miniPlayerStyle) {
           case "wide":
             width = 400;
@@ -185,49 +117,126 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
             break;
         }
 
-        // Lock window size
-        await Promise.all([
-          appWindow.setMinSize(new LogicalSize(width, height)),
-          appWindow.setMaxSize(new LogicalSize(width, height)),
-          appWindow.setSize(new LogicalSize(width, height)),
-        ]);
-
-        // Position based on user preference
+        // Calculate position on current monitor
+        const factor = await appWindow.scaleFactor();
         const monitor = await currentMonitor();
+        let x = 0;
+        let y = 0;
+
         if (monitor) {
-          const padding = 20 * factor; // 20px padding from edges
-          const taskbarPadding = 60 * factor; // ~60px estimated taskbar spacing
+          const padding = 20 * factor;
+          const taskbarPadding = 60 * factor;
           const windowWidthPhysical = width * factor;
           const windowHeightPhysical = height * factor;
 
-          let x: number;
-          let y: number;
+          const pos = settings.miniPlayerPosition || "bottom-right";
 
-          const position = settings.miniPlayerPosition || "bottom-right";
-
-          // Calculate X position
-          if (position.includes("right")) {
+          if (pos.includes("right")) {
             x = Math.round(monitor.size.width - windowWidthPhysical - padding);
           } else {
             x = Math.round(padding);
           }
 
-          // Calculate Y position
-          if (position.includes("bottom")) {
-            y = Math.round(
-              monitor.size.height - windowHeightPhysical - taskbarPadding
-            );
+          if (pos.includes("bottom")) {
+            y = Math.round(monitor.size.height - windowHeightPhysical - taskbarPadding);
           } else {
             y = Math.round(padding);
           }
-
-          await appWindow.setPosition(new PhysicalPosition(x, y));
         }
 
         set({ isMiniPlayer: true });
+
+        // Get the pre-configured miniplayer window from tauri.conf.json
+        const miniplayer = await WebviewWindow.getByLabel("miniplayer");
+        if (!miniplayer) {
+          logger.error("Miniplayer window not found in config");
+          set({ isMiniPlayer: false });
+          return;
+        }
+
+        // Set size and position
+        await Promise.all([
+          miniplayer.setSize(new LogicalSize(width, height)),
+          miniplayer.setPosition(new PhysicalPosition(x, y)),
+        ]);
+
+        // Emit current state
+        await emit("miniplayer:init", {
+          currentTrack: audioState.currentTrack,
+          position: audioState.position,
+          duration: audioState.duration,
+          volume: audioState.volume,
+          shuffle: audioState.shuffle,
+          repeat: audioState.repeat,
+          miniPlayerStyle: settings.miniPlayerStyle,
+          miniPlayerPosition: settings.miniPlayerPosition,
+        });
+
+        // Show miniplayer, then hide main (sequential to avoid race)
+        await miniplayer.show();
+        await appWindow.hide();
+
+        // Listen for close/restore from miniplayer
+        const unlistenClose = await listen("miniplayer:close", async () => {
+          stopMpListeners();
+          const mp = await WebviewWindow.getByLabel("miniplayer");
+          if (mp) {
+            try { await mp.hide(); } catch { /* already hidden */ }
+          }
+          await appWindow.show();
+          set({ isMiniPlayer: false, isSearchOpen: false });
+        });
+
+        // Listen for forwarded audio actions from miniplayer
+        const unlistenNext = await listen("miniplayer:next", () => {
+          useAudioStore.getState().next();
+        });
+
+        const unlistenPrev = await listen("miniplayer:previous", () => {
+          useAudioStore.getState().previous();
+        });
+
+        const unlistenShuffle = await listen<{ shuffle: boolean }>(
+          "miniplayer:toggle-shuffle",
+          (e) => {
+            useAudioStore.setState({ shuffle: e.payload.shuffle });
+          },
+        );
+
+        const unlistenRepeat = await listen<{ repeat: string }>(
+          "miniplayer:toggle-repeat",
+          (e) => {
+            useAudioStore.setState({ repeat: e.payload.repeat as "off" | "all" | "one" });
+          },
+        );
+
+        // Auto-close miniplayer when main window gains focus (e.g. tray "Show")
+        const unlistenFocus = await appWindow.listen("tauri://focus", async () => {
+          if (useNavigationStore.getState().isMiniPlayer) {
+            stopMpListeners();
+            const mp = await WebviewWindow.getByLabel("miniplayer");
+            if (mp) {
+              try { await mp.hide(); } catch { /* already hidden */ }
+            }
+            set({ isMiniPlayer: false, isSearchOpen: false });
+          }
+        });
+
+        const stopMpListeners = () => {
+          unlistenClose();
+          unlistenNext();
+          unlistenPrev();
+          unlistenShuffle();
+          unlistenRepeat();
+          unlistenFocus();
+        };
       }
     } catch (e) {
       logger.error("Failed to toggle Mini Player", e);
+      try {
+        await getCurrentWindow().show();
+      } catch { /* window may already be visible */ }
+      set({ isMiniPlayer: false });
     }
   },
 }));

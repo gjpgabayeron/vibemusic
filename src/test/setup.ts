@@ -8,10 +8,12 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(() => Promise.resolve(() => {})),
+  emit: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: vi.fn(() => ({
+    label: "main",
     setMinSize: vi.fn(),
     setMaxSize: vi.fn(),
     setSize: vi.fn(),
@@ -24,18 +26,36 @@ vi.mock("@tauri-apps/api/window", () => ({
     minimize: vi.fn(),
     maximize: vi.fn(),
     unmaximize: vi.fn(),
-    close: vi.fn(),
-    show: vi.fn(),
-    hide: vi.fn(),
+    close: vi.fn(() => Promise.resolve()),
+    show: vi.fn(() => Promise.resolve()),
+    hide: vi.fn(() => Promise.resolve()),
     onCloseRequested: vi.fn(() => Promise.resolve(() => {})),
   })),
-  LogicalSize: vi.fn((width: number, height: number) => ({ width, height })),
-  PhysicalPosition: vi.fn((x: number, y: number) => ({ x, y })),
   currentMonitor: vi.fn(() =>
     Promise.resolve({
       size: { width: 1920, height: 1080 },
     })
   ),
+}));
+
+const mockMiniplayerWindow = {
+  once: vi.fn(),
+  show: vi.fn(() => Promise.resolve()),
+  setFocus: vi.fn(() => Promise.resolve()),
+  hide: vi.fn(() => Promise.resolve()),
+  close: vi.fn(() => Promise.resolve()),
+  setSize: vi.fn(() => Promise.resolve()),
+  setPosition: vi.fn(() => Promise.resolve()),
+};
+
+vi.mock("@tauri-apps/api/webviewWindow", () => ({
+  WebviewWindow: Object.assign(
+    vi.fn(() => mockMiniplayerWindow),
+    { getByLabel: vi.fn(() => Promise.resolve(mockMiniplayerWindow)) },
+  ),
+  getCurrentWebviewWindow: vi.fn(() => ({
+    label: "main",
+  })),
 }));
 
 vi.mock("@tauri-apps/plugin-store", () => ({

@@ -7,9 +7,6 @@ beforeEach(() => {
     detailView: null,
     isSearchOpen: false,
     isMiniPlayer: false,
-    previousWindowSize: null,
-    previousWindowPosition: null,
-    wasMaximized: false,
   });
 });
 
