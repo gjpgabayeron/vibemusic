@@ -4,16 +4,17 @@ import MusicController from "./components/music-controller";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useAudioStore } from "./stores/audio-store";
 
-import NavigationMenu from "./components/navigation-menu";
 import QueueMenu from "./components/queue-menu";
 import TrackDetailPanel from "./components/track-detail-panel";
 import LyricsPanel from "./components/lyrics-panel";
 import MainContent from "./components/main-content";
+import { BackgroundGradient } from "./components/background-gradient";
+import { SidebarSection } from "./components/sidebar-section";
 import { GlobalSearch } from "./components/dialogs/global-search";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 
-import { getDominantColor, adjustColorForTheme } from "./lib/color-utils";
+import { getDominantColor } from "./lib/color-utils";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
@@ -71,7 +72,6 @@ export default function App() {
 
   // Individual selectors for better re-render performance
   const resolvedTheme = useSettingsStore((s) => s.resolvedTheme);
-  const dynamicGradient = useSettingsStore((s) => s.dynamicGradient);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const isSettingsLoading = useSettingsStore((s) => s.isLoading);
   const addLibraryPath = useSettingsStore((s) => s.addLibraryPath);
@@ -341,52 +341,15 @@ export default function App() {
         <MiniPlayer />
       ) : (
         <>
-          {/* Background Gradient — theme-aware: darker/sharper in light mode, softer in dark mode */}
-          <div
-            className="fixed top-0 left-0 right-0 pointer-events-none transition-colors duration-1000 ease-in-out z-0"
-            style={{
-              height: resolvedTheme === "dark" ? "24rem" : "20rem",
-              opacity: resolvedTheme === "dark" ? 0.2 : 0.35,
-              backgroundColor:
-                dynamicGradient && gradientColor !== "transparent"
-                  ? adjustColorForTheme(gradientColor, resolvedTheme)
-                  : "transparent",
-              maskImage: "linear-gradient(to bottom, black, transparent)",
-              WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
-            }}
-          />
+          <BackgroundGradient gradientColor={gradientColor} />
 
           <div className="flex flex-1 gap-6 min-h-0 relative z-10 pt-10">
-            {/* Sidebar */}
-            <div className="mt-2 pt-6 flex flex-col gap-6 w-16 shrink-0 h-full pb-32">
-              <div
-                id="user_profile"
-                onClick={handleProfileClick}
-                className={`aspect-square w-full shrink-0 rounded-lg overflow-hidden ${
-                  !activeProfile?.avatarPath &&
-                  (activeProfile?.color || "bg-gray-600")
-                } flex items-center justify-center text-white font-bold cursor-pointer hover:scale-105 transition-transform relative`}
-                title={`Current: ${
-                  activeProfile?.name || "User"
-                } (Click to switch)`}
-              >
-                {activeProfile?.avatarPath ? (
-                  <img
-                    src={convertFileSrc(activeProfile.avatarPath)}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  activeProfile?.name?.[0]?.toUpperCase()
-                )}
-              </div>
-              <div className="flex justify-center h-full">
-                <NavigationMenu
-                  onImport={handleFolderImport}
-                  isScanning={isScanning}
-                />
-              </div>
-            </div>
+            <SidebarSection
+              activeProfile={activeProfile}
+              onProfileClick={handleProfileClick}
+              onImport={handleFolderImport}
+              isScanning={isScanning}
+            />
 
             {/* Main Content */}
             <div className="flex-1 min-w-0 min-h-0 flex">

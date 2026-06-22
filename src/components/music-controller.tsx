@@ -1,25 +1,3 @@
-import {
-  Logs,
-  Pause,
-  Play,
-  Repeat,
-  Repeat1,
-  Shuffle,
-  SkipBack,
-  SkipForward,
-  Volume1,
-  Volume2,
-  VolumeX,
-  SquareArrowOutUpRight,
-  Info,
-  Mic2,
-} from "lucide-react";
-import { Button } from "./ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Slider } from "./ui/slider";
 import {
   useAudioStore,
@@ -41,6 +19,9 @@ import { logger } from "@/lib/logger";
 import placeholderArt from "@/assets/placeholder-art.png";
 import { ScrollingText } from "./shared/scrolling-text";
 import { ArtistLinks } from "./shared/artist-links";
+import { VolumeControl } from "./shared/volume-control";
+import { PlaybackControls } from "./shared/playback-controls";
+import { SidePanelActions } from "./shared/side-panel-actions";
 
 export default function MusicControler() {
   // Use atomic selectors for minimal re-renders
@@ -166,82 +147,16 @@ export default function MusicControler() {
         id="controls"
         className=" flex flex-col items-center justify-center gap-2"
       >
-        {/* Controls */}
-        <div className=" flex items-center gap-2">
-          <Tooltip delayDuration={1000}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                onClick={toggleShuffle}
-                className={
-                  shuffle ? "text-purple-500 hover:text-purple-400" : ""
-                }
-              >
-                <Shuffle size={20} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Shuffle {shuffle ? "On" : "Off"}</TooltipContent>
-          </Tooltip>
-
-          <Tooltip delayDuration={1000}>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" onClick={() => previous()}>
-                <SkipBack size={20} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Previous</TooltipContent>
-          </Tooltip>
-
-          <Tooltip delayDuration={1000}>
-            <TooltipTrigger asChild>
-              <Button
-                size={"icon-lg"}
-                variant="ghost"
-                onClick={handlePlayPause}
-              >
-                {isPlaying ? (
-                  <Pause className="fill-white" />
-                ) : (
-                  <Play className="fill-white ml-0.5" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{isPlaying ? "Pause" : "Play"}</TooltipContent>
-          </Tooltip>
-
-          <Tooltip delayDuration={1000}>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" onClick={() => next()}>
-                <SkipForward size={20} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Next</TooltipContent>
-          </Tooltip>
-
-          <Tooltip delayDuration={1000}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                onClick={toggleRepeat}
-                className={
-                  repeat !== "off"
-                    ? "text-purple-500 hover:text-purple-400"
-                    : ""
-                }
-              >
-                {repeat === "one" ? (
-                  <Repeat1 size={20} />
-                ) : (
-                  <Repeat size={20} />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Repeat{" "}
-              {repeat === "off" ? "Off" : repeat === "all" ? "All" : "One"}
-            </TooltipContent>
-          </Tooltip>
-        </div>
+        <PlaybackControls
+          isPlaying={isPlaying}
+          shuffle={shuffle}
+          repeat={repeat}
+          onToggleShuffle={toggleShuffle}
+          onPrevious={() => previous()}
+          onPlayPause={handlePlayPause}
+          onNext={() => next()}
+          onToggleRepeat={toggleRepeat}
+        />
         {/* Seeker */}
         <div className=" flex items-center gap-4 w-full">
           <p className="text-white text-xs font-normal w-10 text-right">
@@ -261,113 +176,8 @@ export default function MusicControler() {
         </div>
       </div>
       <div id="actions" className="flex items-center gap-2 justify-end">
-        {/* Volume */}
-        <div className="flex items-center gap-2 w-36">
-          {/* Mute Button */}
-          <Tooltip delayDuration={1000}>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" onClick={toggleMute}>
-                {volume === 0 ? (
-                  <VolumeX size={20} className="text-gray-400" />
-                ) : volume < 0.5 ? (
-                  <Volume1 size={20} />
-                ) : (
-                  <Volume2 size={20} />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{volume === 0 ? "Unmute" : "Mute"}</TooltipContent>
-          </Tooltip>
-          <Slider
-            aria-label="Volume"
-            value={[volume]}
-            max={1}
-            step={0.01}
-            onValueChange={handleVolume}
-          />
-        </div>
-
-        <div className="flex items-center">
-          {/* Queue Menu Toggle */}
-          <Tooltip delayDuration={1000}>
-            <TooltipTrigger asChild>
-              <Button
-                id="queue-menu-button"
-                variant="ghost"
-                onClick={toggleQueue}
-                className={
-                  sidePanel === "queue"
-                    ? "text-purple-500 hover:text-purple-400"
-                    : ""
-                }
-              >
-                <Logs size={20} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Queue</TooltipContent>
-          </Tooltip>
-
-          {/* Lyrics Menu Toggle */}
-          <Tooltip delayDuration={1000}>
-            <TooltipTrigger asChild>
-              <Button
-                id="lyrics-button"
-                variant="ghost"
-                onClick={() =>
-                  setSidePanel(sidePanel === "lyrics" ? "none" : "lyrics")
-                }
-                className={
-                  sidePanel === "lyrics"
-                    ? "text-purple-500 hover:text-purple-400"
-                    : ""
-                }
-              >
-                <Mic2 size={20} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Lyrics</TooltipContent>
-          </Tooltip>
-
-          {/* Info Toggle */}
-          <Tooltip delayDuration={1000}>
-            <TooltipTrigger asChild>
-              <Button
-                id="info-button"
-                variant="ghost"
-                onClick={() =>
-                  setSidePanel(
-                    sidePanel === "track-details" ? "none" : "track-details",
-                  )
-                }
-                className={
-                  sidePanel === "track-details"
-                    ? "text-purple-500 hover:text-purple-400"
-                    : ""
-                }
-              >
-                <Info size={20} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Track Details</TooltipContent>
-          </Tooltip>
-        </div>
-
-        {/* Compact Mode Toggle */}
-        <Tooltip delayDuration={1000}>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                logger.debug("Toggle Mini Player Clicked");
-                toggleMiniPlayer();
-              }}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <SquareArrowOutUpRight size={20} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Mini Player</TooltipContent>
-        </Tooltip>
+        <VolumeControl volume={volume} onVolumeChange={handleVolume} onToggleMute={toggleMute} />
+        <SidePanelActions sidePanel={sidePanel} onToggleQueue={toggleQueue} onSetSidePanel={setSidePanel} onToggleMiniPlayer={() => { logger.debug("Toggle Mini Player Clicked"); toggleMiniPlayer(); }} />
       </div>
     </div>
   );
