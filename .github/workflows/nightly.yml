@@ -256,6 +256,13 @@ jobs:
             'linux-x86_64'   = '_amd64\.AppImage(\.tar\.gz)?$'
           }
 
+          # Read changelog for notes
+          $notes = ""
+          $changelogPath = Join-Path artifacts "changelog.md"
+          if (Test-Path $changelogPath) {
+            $notes = (Get-Content $changelogPath -Raw).Trim()
+          }
+
           $platforms = @{}
           Get-ChildItem -Path artifacts -Recurse -File | Where-Object {
             $_.Name -match '^vibemusic[_-]' -or $_.Name -match '^vibemusic\.app'
@@ -280,6 +287,7 @@ jobs:
           $latestJson = @{
             version = $version
             pub_date = $pubDate
+            notes = $notes
             platforms = $platforms
           }
 

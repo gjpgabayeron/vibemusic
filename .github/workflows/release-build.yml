@@ -130,11 +130,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Fetch enough history for git-cliff
+          git fetch --tags --depth=100 2>$null
+
           $version = "${{ needs.prepare.outputs.VERSION }}"
           $tag = "${{ github.event.release.tag_name }}"
           $repo = "${{ github.repository }}"
           $baseUrl = "https://github.com/$repo/releases/download/$tag"
           $pubDate = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ss") + "Z"
+
+          # Generate changelog for the latest release
+          $notes = ""
+          $changelog = git cliff --latest --strip header 2>$null
+          if ($LASTEXITCODE -eq 0 -and $changelog) {
+            $notes = $changelog.Trim()
+          }
 
           $patterns = @{
             'windows-x86_64' = '_x64_en-US\.msi(\.zip)?$'
@@ -167,6 +177,7 @@ jobs:
           $latestJson = @{
             version = $version
             pub_date = $pubDate
+            notes = $notes
             platforms = $platforms
           }
 
