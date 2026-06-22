@@ -61,7 +61,7 @@ export default function HomePage() {
   // Derived state for display - memoized to prevent new array creation on each render
   const recentTracks = useMemo(() => tracks.slice(0, 20), [tracks]);
   const displayAlbums = useMemo(() => albums.slice(0, 10), [albums]);
-  const displayPlaylists = playlists;
+  const displayPlaylists = useMemo(() => playlists.slice(0, 10), [playlists]);
 
   const isEmpty =
     !isLoading &&
