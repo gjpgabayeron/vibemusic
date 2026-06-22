@@ -1,5 +1,12 @@
 import { useMemo } from "react";
-import { Music, Headphones, Disc, CalendarDays, Sparkles, TrendingUp } from "lucide-react";
+import {
+  Music,
+  Headphones,
+  Disc,
+  CalendarDays,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { WeeklyWrapData, TimeRange } from "@/stores/stats-store";
 
@@ -42,14 +49,16 @@ export function WeeklyWrap({ data, timeRange, isLoading }: WeeklyWrapProps) {
     const items = [];
     if (data.unique_artists >= 5) items.push("Wide range — you explored a lot");
     if (data.total_plays >= 50) items.push("Heavy rotation");
-    if (data.total_listening_ms >= 3_600_000 * 5) items.push("Deep listening — over 5 hours");
-    if (data.unique_tracks > data.unique_artists * 2) items.push("Variety seeker");
+    if (data.total_listening_ms >= 3_600_000 * 5)
+      items.push("Deep listening — over 5 hours");
+    if (data.unique_tracks > data.unique_artists * 2)
+      items.push("Variety seeker");
     return items;
   }, [hasData, data]);
 
   if (isLoading) {
     return (
-      <div className="bg-gradient-to-br from-card/50 to-card/30 border border-border rounded-xl p-5 animate-pulse">
+      <div className="bg-linear-to-br from-card/50 to-card/30 border border-border rounded-xl p-5 animate-pulse">
         <Skeleton className="h-5 w-40 mb-4" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <Skeleton className="h-16 rounded-lg" />
@@ -64,22 +73,24 @@ export function WeeklyWrap({ data, timeRange, isLoading }: WeeklyWrapProps) {
 
   if (!hasData) {
     return (
-      <div className="bg-gradient-to-br from-card/50 to-card/30 border border-border rounded-xl p-5">
+      <div className="bg-linear-to-br from-card/50 to-card/30 border border-border rounded-xl p-5">
         <div className="flex items-center gap-2 text-muted-foreground mb-2">
           <Sparkles size={16} />
           <span className="text-xs font-medium uppercase tracking-wide">
             {RANGE_LABELS[timeRange]}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground">No activity in this period.</p>
+        <p className="text-sm text-muted-foreground">
+          No activity in this period.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gradient-to-br from-card/50 via-card/30 to-card/10 border border-border rounded-xl p-5 relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-48 h-48 bg-primary/[0.02] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/[0.03] rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+    <div className="bg-linear-to-br from-card/50 via-card/30 to-card/10 border border-border rounded-xl p-5 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-48 h-48 bg-primary/2 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/3 rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
       <div className="relative z-10">
         <div className="flex items-center gap-2 text-muted-foreground mb-4">
@@ -91,9 +102,21 @@ export function WeeklyWrap({ data, timeRange, isLoading }: WeeklyWrapProps) {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <StatTile icon={Headphones} label="Plays" value={data.total_plays} />
-          <StatTile icon={Music} label="Time Listened" value={formatTime(data.total_listening_ms)} />
-          <StatTile icon={Disc} label="Unique Tracks" value={data.unique_tracks} />
-          <StatTile icon={TrendingUp} label="Artists" value={data.unique_artists} />
+          <StatTile
+            icon={Music}
+            label="Time Listened"
+            value={formatTime(data.total_listening_ms)}
+          />
+          <StatTile
+            icon={Disc}
+            label="Unique Tracks"
+            value={data.unique_tracks}
+          />
+          <StatTile
+            icon={TrendingUp}
+            label="Artists"
+            value={data.unique_artists}
+          />
         </div>
 
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs">
@@ -101,22 +124,27 @@ export function WeeklyWrap({ data, timeRange, isLoading }: WeeklyWrapProps) {
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Music size={12} className="text-foreground/60 shrink-0" />
               <span className="text-foreground/80 font-medium">Top Track:</span>
-              <span className="truncate max-w-[160px]">{data.top_track}</span>
+              <span className="truncate max-w-40">{data.top_track}</span>
             </div>
           )}
           {data.top_artist && (
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Headphones size={12} className="text-foreground/60 shrink-0" />
-              <span className="text-foreground/80 font-medium">Top Artist:</span>
-              <span className="truncate max-w-[140px]">{data.top_artist}</span>
+              <span className="text-foreground/80 font-medium">
+                Top Artist:
+              </span>
+              <span className="truncate max-w-35">{data.top_artist}</span>
             </div>
           )}
           {data.most_active_day && (
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <CalendarDays size={12} className="text-foreground/60 shrink-0" />
-              <span className="text-foreground/80 font-medium">Most Active:</span>
+              <span className="text-foreground/80 font-medium">
+                Most Active:
+              </span>
               <span>
-                {formatDay(data.most_active_day)} ({data.most_active_day_plays} plays)
+                {formatDay(data.most_active_day)} ({data.most_active_day_plays}{" "}
+                plays)
               </span>
             </div>
           )}
@@ -124,9 +152,9 @@ export function WeeklyWrap({ data, timeRange, isLoading }: WeeklyWrapProps) {
 
         {insights.length > 0 && (
           <div className="mt-3 pt-3 border-t border-border/50 flex flex-wrap gap-2">
-            {insights.map((insight, i) => (
+            {insights.map((insight) => (
               <span
-                key={i}
+                key={insight}
                 className="text-[10px] text-muted-foreground bg-muted/50 px-2 py-1 rounded-full"
               >
                 {insight}
