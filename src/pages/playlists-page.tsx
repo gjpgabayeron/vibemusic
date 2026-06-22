@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
 import { Plus, ListMusic, Search } from "lucide-react";
@@ -6,19 +6,16 @@ import { useLibraryStore } from "@/stores/library-store";
 import { Playlist } from "@/lib/api";
 import { PlaylistCreateDialog } from "@/components/dialogs/playlist-create-dialog";
 import { GridSkeleton } from "@/components/shared/grid-skeleton";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useScrollMask } from "@/hooks/use-scroll-mask";
 import PlaylistCard from "@/components/shared/item/playlist-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PlaylistEditDialog } from "@/components/dialogs/playlist-edit-dialog";
-import { useIsPlayerVisible } from "@/stores/audio-store";
 
-import { useMemo } from "react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { SortDropdown } from "@/components/shared/sort-dropdown";
 import { Input } from "@/components/ui/input";
+import { VirtualizedGrid } from "@/components/shared/virtualized-grid";
 
 export default function PlaylistsPage() {
   // Use global store
@@ -26,8 +23,9 @@ export default function PlaylistsPage() {
   const isLoading = useLibraryStore((s) => s.isLoading);
   const deletePlaylist = useLibraryStore((s) => s.deletePlaylist);
 
-  const { playlistsSortKey, playlistsSortDirection, setPlaylistsSort } =
-    useSettingsStore();
+  const playlistsSortKey = useSettingsStore((s) => s.playlistsSortKey);
+  const playlistsSortDirection = useSettingsStore((s) => s.playlistsSortDirection);
+  const setPlaylistsSort = useSettingsStore((s) => s.setPlaylistsSort);
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -77,10 +75,7 @@ export default function PlaylistsPage() {
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const scrollRef = useScrollMask();
 
-  // Dynamic padding based on player visibility
-  const isPlayerVisible = useIsPlayerVisible();
 
   const confirmDelete = async () => {
     if (!playlistToDelete) return;
@@ -150,58 +145,48 @@ export default function PlaylistsPage() {
         loadingText="Deleting..."
       />
 
-      <div
-        ref={scrollRef}
-        className={`flex-1 overflow-y-auto px-2 scroll-mask-y ${
-          !isLoading && filteredAndSortedPlaylists.length === 0
-            ? "flex flex-col"
-            : ""
-        }`}
-      >
-        {isLoading ? (
-          <GridSkeleton
-            className="pb-8"
-            renderItem={(i) => (
-              <div key={i} className="flex flex-col rounded-lg p-3 gap-3">
-                <Skeleton className="aspect-square w-full rounded-md bg-foreground/5" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-3/4 bg-foreground/10" />
-                  <Skeleton className="h-3 w-1/2 bg-foreground/5" />
-                </div>
+      {isLoading ? (
+        <GridSkeleton
+          className="pb-8"
+          renderItem={(i) => (
+            <div key={i} className="flex flex-col rounded-lg p-3 gap-3">
+              <div className="aspect-square w-full rounded-md bg-foreground/5" />
+              <div className="space-y-2">
+                <div className="h-4 w-3/4 rounded bg-foreground/10" />
+                <div className="h-3 w-1/2 rounded bg-foreground/5" />
               </div>
-            )}
-          />
-        ) : filteredAndSortedPlaylists.length === 0 ? (
-          searchQuery ? (
-            <EmptyState
-              icon={Search}
-              title="No matches found"
-              description={`We couldn't find any playlists matching "${searchQuery}"`}
+            </div>
+          )}
+        />
+      ) : (
+        <VirtualizedGrid
+          items={filteredAndSortedPlaylists}
+          renderItem={(playlist) => (
+            <PlaylistCard
+              key={playlist.id}
+              playlist={playlist}
+              onEdit={setEditingPlaylist}
+              onDelete={handleDeleteRequest}
             />
-          ) : (
-            <EmptyState
-              icon={ListMusic}
-              title="No playlists created"
-              description="Create your first playlist to organize your music."
-            />
-          )
-        ) : (
-          <div
-            className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 ${
-              isPlayerVisible ? "pb-39" : "pb-8"
-            }`}
-          >
-            {filteredAndSortedPlaylists.map((playlist) => (
-              <PlaylistCard
-                key={playlist.id}
-                playlist={playlist}
-                onEdit={setEditingPlaylist}
-                onDelete={handleDeleteRequest}
+          )}
+          itemHeight={220}
+          emptyState={
+            searchQuery ? (
+              <EmptyState
+                icon={Search}
+                title="No matches found"
+                description={`We couldn't find any playlists matching "${searchQuery}"`}
               />
-            ))}
-          </div>
-        )}
-      </div>
+            ) : (
+              <EmptyState
+                icon={ListMusic}
+                title="No playlists created"
+                description="Create your first playlist to organize your music."
+              />
+            )
+          }
+        />
+      )}
 
       {editingPlaylist && (
         <PlaylistEditDialog
