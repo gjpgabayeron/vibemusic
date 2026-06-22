@@ -207,13 +207,13 @@ export default function LyricsPanel() {
                     }
                   }}
                   className={cn(
-                    "text-xl transition-all duration-300 py-2 px-4 rounded-xl origin-left w-fit max-w-full",
+                    "text-xl transition-all duration-300 py-2 px-4 rounded-xl origin-left w-fit max-w-full text-left",
                     line.timestamp_ms !== null &&
-                      "cursor-pointer hover:bg-white/5",
+                      "cursor-pointer dark:hover:bg-white/5 hover:bg-black/5",
                     isActive
-                      ? "text-white font-black scale-105 bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.1)] backdrop-blur-sm pl-6"
+                      ? "dark:text-white font-black scale-105 bg-black/10 dark:bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.1)] backdrop-blur-sm pl-6"
                       : isPast
-                        ? "text-muted-foreground/30 blur-[0.5px] scale-95"
+                        ? "text-muted-foreground/30 blur-[0.5px] scale-90"
                         : "text-muted-foreground/70 scale-100",
                   )}
                 >
