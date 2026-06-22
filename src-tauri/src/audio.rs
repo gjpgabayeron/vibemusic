@@ -228,7 +228,6 @@ struct SymphoniaDecoder {
     decoder: Box<dyn AudioDecoder>,
     track_id: u32,
     sample_rate: u32,
-    channels: usize,
     duration_ms: u64,
 }
 
@@ -272,7 +271,6 @@ impl SymphoniaDecoder {
                 decoder,
                 track_id,
                 sample_rate,
-                channels,
                 duration_ms,
             },
             buf,
@@ -325,7 +323,6 @@ impl SymphoniaDecoder {
     }
 
     fn sample_rate(&self) -> u32 { self.sample_rate }
-    fn channels(&self) -> usize { self.channels }
     fn duration_ms(&self) -> u64 { self.duration_ms }
 }
 
