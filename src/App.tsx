@@ -13,7 +13,7 @@ import { GlobalSearch } from "./components/dialogs/global-search";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 
-import { getDominantColor } from "./lib/color-utils";
+import { getDominantColor, adjustColorForTheme } from "./lib/color-utils";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
@@ -341,11 +341,16 @@ export default function App() {
         <MiniPlayer />
       ) : (
         <>
-          {/* Background Gradient */}
+          {/* Background Gradient — theme-aware: darker/sharper in light mode, softer in dark mode */}
           <div
-            className="fixed top-0 left-0 right-0 h-96 pointer-events-none transition-colors duration-1000 ease-in-out z-0 opacity-25"
+            className="fixed top-0 left-0 right-0 pointer-events-none transition-colors duration-1000 ease-in-out z-0"
             style={{
-              backgroundColor: dynamicGradient ? gradientColor : "transparent",
+              height: resolvedTheme === "dark" ? "24rem" : "20rem",
+              opacity: resolvedTheme === "dark" ? 0.2 : 0.35,
+              backgroundColor:
+                dynamicGradient && gradientColor !== "transparent"
+                  ? adjustColorForTheme(gradientColor, resolvedTheme)
+                  : "transparent",
               maskImage: "linear-gradient(to bottom, black, transparent)",
               WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
             }}
