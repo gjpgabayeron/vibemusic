@@ -24,8 +24,11 @@ export function ScrollingText({
     };
 
     checkOverflow();
-    window.addEventListener("resize", checkOverflow);
-    return () => window.removeEventListener("resize", checkOverflow);
+    const observer = new ResizeObserver(checkOverflow);
+    if (containerRef.current?.parentElement) {
+      observer.observe(containerRef.current.parentElement);
+    }
+    return () => observer.disconnect();
   }, [children]);
 
   return (
