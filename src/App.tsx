@@ -209,6 +209,7 @@ export default function App() {
     } else {
       setGradientColor("transparent");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id, isPlaybackActive]);
 
   // Initialize audio event listeners
