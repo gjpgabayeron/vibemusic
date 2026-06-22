@@ -28,6 +28,7 @@ import { useState, useEffect } from "react";
 import placeholderArt from "@/assets/placeholder-art.png";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useNavigationStore } from "@/stores/navigation-store";
+import type { Track } from "@/lib/api";
 
 // --- HELPER COMPONENTS ---
 
@@ -173,6 +174,42 @@ function MiniPlayerControls({
   );
 }
 
+// --- HOISTED COMPONENTS ---
+
+function Art({ track, className }: { track: Track | null; className: string }) {
+  return (
+    <img
+      src={
+        track?.artwork_path
+          ? convertFileSrc(track.artwork_path)
+          : placeholderArt
+      }
+      className={className}
+      alt="Art"
+    />
+  );
+}
+
+function DragHandle({
+  className,
+  iconSize = 16,
+}: {
+  className?: string;
+  iconSize?: number;
+}) {
+  return (
+    <div
+      data-tauri-drag-region
+      className={`absolute z-50 flex items-center justify-center p-1 cursor-grab active:cursor-grabbing hover:bg-accent rounded-full transition-colors ${className}`}
+    >
+      <GripHorizontal
+        size={iconSize}
+        className="text-muted-foreground pointer-events-none"
+      />
+    </div>
+  );
+}
+
 export default function MiniPlayer() {
   const currentTrack = useCurrentTrack();
   const status = usePlayerStatus();
@@ -211,43 +248,11 @@ export default function MiniPlayer() {
     else resume();
   };
 
-  // Shared Art Component
-  const Art = ({ className }: { className: string }) => (
-    <img
-      src={
-        currentTrack?.artwork_path
-          ? convertFileSrc(currentTrack.artwork_path)
-          : placeholderArt
-      }
-      className={className}
-      alt="Art"
-    />
-  );
-
-  // Drag Handle Component
-  const DragHandle = ({
-    className,
-    iconSize = 16,
-  }: {
-    className?: string;
-    iconSize?: number;
-  }) => (
-    <div
-      data-tauri-drag-region
-      className={`absolute z-50 flex items-center justify-center p-1 cursor-grab active:cursor-grabbing hover:bg-accent rounded-full transition-colors ${className}`}
-    >
-      <GripHorizontal
-        size={iconSize}
-        className="text-muted-foreground pointer-events-none"
-      />
-    </div>
-  );
-
   if (miniPlayerStyle === "bar") {
     return (
       <div className="w-full h-full bg-background flex items-center px-3 gap-3 overflow-hidden border border-border select-none relative group">
         <DragHandle className="top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100" />
-        <Art className="h-12 w-12 rounded-sm object-cover bg-muted shrink-0" />
+        <Art track={currentTrack} className="h-12 w-12 rounded-sm object-cover bg-muted shrink-0" />
 
         <div className="flex flex-col flex-1 min-w-0 justify-center">
           <p className="text-foreground font-bold truncate text-sm leading-tight">
@@ -306,7 +311,7 @@ export default function MiniPlayer() {
 
         {/* Top: Art + Info */}
         <div className="flex items-center gap-3 min-h-0 h-full">
-          <Art className="aspect-square h-full rounded-md object-cover bg-muted shrink-0" />
+          <Art track={currentTrack} className="aspect-square h-full rounded-md object-cover bg-muted shrink-0" />
           <div className="flex flex-col min-w-0 justify-center">
             <p className="text-foreground font-bold text-md leading-tight truncate">
               {currentTrack?.title || "No Playing Track"}
@@ -340,7 +345,7 @@ export default function MiniPlayer() {
     <div className="w-full h-full bg-background flex flex-col p-3 gap-3 overflow-hidden border border-border select-none relative group">
       <DragHandle className="top-2 right-2 opacity-0 group-hover:opacity-100 bg-background/50" />
       <div className="flex-1 w-full min-h-0 relative rounded-lg overflow-hidden bg-muted group/art">
-        <Art className="w-full h-full object-cover transition-transform duration-500 group-hover/art:scale-110" />
+        <Art track={currentTrack} className="w-full h-full object-cover transition-transform duration-500 group-hover/art:scale-110" />
 
         {/* Hover Controls Overlay */}
         <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px] opacity-0 group-hover/art:opacity-100 transition-all duration-300 flex flex-col items-center justify-center p-4">
