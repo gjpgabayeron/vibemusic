@@ -1,5 +1,4 @@
 use log::info;
-use rusqlite::Connection;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -8,9 +7,9 @@ use tauri::{AppHandle, Manager};
 /// Shared state for the active profile.
 pub struct ProfileState(pub Mutex<Option<String>>);
 
-/// Cache of database connections keyed by profile ID.
+/// Cache of database helpers keyed by profile ID.
 /// Avoids opening a new SQLite connection per command invocation.
-pub struct DbCache(pub Mutex<HashMap<Option<String>, Connection>>);
+pub struct DbCache(pub Mutex<HashMap<Option<String>, crate::database::DbHelper>>);
 
 /// Sets the active profile ID in the application state.
 #[tauri::command]
@@ -44,13 +43,12 @@ where
 
     let cache = app.state::<DbCache>();
     let mut cache = cache.0.lock().unwrap();
-    let conn = cache.entry(profile_id).or_insert_with(|| {
-        crate::database::DbHelper::open_connection(&db_path)
+    let db = cache.entry(profile_id).or_insert_with(|| {
+        crate::database::DbHelper::new(&db_path)
             .expect("Failed to open database connection")
     });
 
-    let db = crate::database::DbHelper::from_connection(conn);
-    f(&db).map_err(|e| format!("Database operation failed: {}", e))
+    f(db).map_err(|e| format!("Database operation failed: {}", e))
 }
 
 pub fn with_db_mut<F, T>(app: &AppHandle, f: F) -> Result<T, String>
@@ -62,13 +60,12 @@ where
 
     let cache = app.state::<DbCache>();
     let mut cache = cache.0.lock().unwrap();
-    let conn = cache.entry(profile_id).or_insert_with(|| {
-        crate::database::DbHelper::open_connection(&db_path)
+    let db = cache.entry(profile_id).or_insert_with(|| {
+        crate::database::DbHelper::new(&db_path)
             .expect("Failed to open database connection")
     });
 
-    let mut db = crate::database::DbHelper::from_connection(conn);
-    f(&mut db).map_err(|e| format!("Database operation failed: {}", e))
+    f(db).map_err(|e| format!("Database operation failed: {}", e))
 }
 
 /// Deletes all data associated with a profile (DB, settings, avatar).

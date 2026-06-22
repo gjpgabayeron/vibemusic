@@ -102,17 +102,21 @@ impl DbHelper {
     }
 
     pub fn get_or_create_artist(tx: &Transaction, name: &str) -> Result<i64> {
-        {
-            let mut stmt = tx.prepare("SELECT id FROM artists WHERE name = ?")?;
-            let mut rows = stmt.query(params![name])?;
-
-            if let Some(row) = rows.next()? {
-                return row.get(0);
+        let id = tx.query_row(
+            "INSERT INTO artists (name) VALUES (?1) ON CONFLICT(name) DO NOTHING RETURNING id",
+            params![name],
+            |row| row.get(0),
+        );
+        match id {
+            Ok(id) => Ok(id),
+            Err(_) => {
+                tx.query_row(
+                    "SELECT id FROM artists WHERE name = ?1",
+                    params![name],
+                    |row| row.get(0),
+                )
             }
         }
-
-        tx.execute("INSERT INTO artists (name) VALUES (?)", params![name])?;
-        Ok(tx.last_insert_rowid())
     }
 
     pub fn get_or_create_album(
@@ -350,19 +354,13 @@ impl DbHelper {
     }
 
     pub fn delete_tracks(tx: &Transaction, ids: &[i64]) -> Result<()> {
-        // SQLite doesn't have a clean WHERE IN (?) for array binding in rusqlite readily available without dynamic SQL construction
-        // or using a series of statements.
-        // For pruning, batched calls are fine.
-
-        // We could also do "DELETE FROM tracks WHERE id IN (1, 2, 3...)" dynamically
         if ids.is_empty() {
             return Ok(());
         }
 
-        let mut stmt = tx.prepare("DELETE FROM tracks WHERE id = ?")?;
-        for id in ids {
-            stmt.execute(params![id])?;
-        }
+        let placeholders: Vec<String> = ids.iter().map(|_| "?".to_string()).collect();
+        let sql = format!("DELETE FROM tracks WHERE id IN ({})", placeholders.join(","));
+        tx.execute(&sql, rusqlite::params_from_iter(ids.iter()))?;
 
         Ok(())
     }
@@ -707,10 +705,13 @@ impl DbHelper {
             "SELECT 
                 a.id, 
                 a.name, 
-                (SELECT COUNT(*) FROM albums WHERE artist_id = a.id) as album_count,
-                (SELECT COUNT(*) FROM track_artists WHERE artist_id = a.id) as track_count,
+                COUNT(DISTINCT al.id) as album_count,
+                COUNT(DISTINCT ta.track_id) as track_count,
                 (SELECT artwork_path FROM albums WHERE artist_id = a.id ORDER BY year DESC LIMIT 1) as artwork_path
             FROM artists a
+            LEFT JOIN albums al ON al.artist_id = a.id
+            LEFT JOIN track_artists ta ON ta.artist_id = a.id
+            GROUP BY a.id
             ORDER BY a.name ASC",
         )?;
 

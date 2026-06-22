@@ -16,7 +16,8 @@ mod stats;
 
 
 use audio::{AudioEngine, AudioState};
-use profile::ProfileState;
+use profile::{DbCache, ProfileState};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
@@ -84,6 +85,7 @@ pub fn run() {
             // Manage state manually since we are in setup
             app.manage(state);
             app.manage(ProfileState(Mutex::new(None)));
+            app.manage(DbCache(Mutex::new(HashMap::new())));
             app.manage(updater::PendingUpdate::default());
             app.manage(watcher::init());
 
