@@ -1,7 +1,7 @@
 import "@fontsource/instrument-sans";
 import "./styles/globals.css";
 import MusicController from "./components/music-controller";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAudioStore } from "./stores/audio-store";
 
 import QueueMenu from "./components/queue-menu";
@@ -11,56 +11,40 @@ import MainContent from "./components/main-content";
 import { BackgroundGradient } from "./components/background-gradient";
 import { SidebarSection } from "./components/sidebar-section";
 import { GlobalSearch } from "./components/dialogs/global-search";
-import { open } from "@tauri-apps/plugin-dialog";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
 import { getDominantColor } from "./lib/color-utils";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   useWindowCloseHandler,
   useRefreshInterceptor,
   useScanProgressListener,
 } from "@/hooks/use-app-init";
+import { useFolderImport } from "@/hooks/use-folder-import";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useNavigationStore, Page } from "@/stores/navigation-store";
 
 import { TitleBar } from "./components/titlebar";
-import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
 import { useProfileStore } from "@/stores/profile-store";
-import ProfileSelectionPage from "@/pages/profile-selection-page";
+import { AppDialogs } from "./components/app-dialogs";
+import { ShellStates } from "@/components/shell-states";
 
 import { useLibraryStore } from "@/stores/library-store";
 import { logger } from "@/lib/logger";
-import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { useUpdateStore } from "./stores/update-store";
 
 
 import MiniPlayer from "./components/mini-player";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
 export default function App() {
   const isMiniPlayer = useNavigationStore((s) => s.isMiniPlayer);
   const sidePanel = useAudioStore((s) => s.sidePanel);
   const initListeners = useAudioStore((s) => s.initListeners);
   const currentTrack = useAudioStore((s) => s.currentTrack);
-  const status = useAudioStore((s) => s.status); // Get status directly or use selector
-  const [isScanning, setIsScanning] = useState(false);
+  const status = useAudioStore((s) => s.status);
   const [gradientColor, setGradientColor] = useState<string>("transparent");
   const [isQuitDialogOpen, setIsQuitDialogOpen] = useState(false);
-  const [showProfileSwitchWarning, setShowProfileSwitchWarning] =
-    useState(false);
+  const [showProfileSwitchWarning, setShowProfileSwitchWarning] = useState(false);
 
   const hasCheckedForUpdate = useRef(false);
   const hasDoneInitialScan = useRef(false); // Prevent scan on profile switch
@@ -70,18 +54,14 @@ export default function App() {
   const [isRefreshWarningOpen, setIsRefreshWarningOpen] = useState(false);
   const isPlaying = status === "playing";
 
-  // Individual selectors for better re-render performance
   const resolvedTheme = useSettingsStore((s) => s.resolvedTheme);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const isSettingsLoading = useSettingsStore((s) => s.isLoading);
-  const addLibraryPath = useSettingsStore((s) => s.addLibraryPath);
-  const libraryPaths = useSettingsStore((s) => s.libraryPaths);
   const initSystemThemeListener = useSettingsStore(
     (s) => s.initSystemThemeListener,
   );
 
 
-  // Intercept Refresh Keys - extracted to custom hook
   useRefreshInterceptor(isPlaying, () => setIsRefreshWarningOpen(true));
 
   const handleConfirmRefresh = async () => {
@@ -90,12 +70,8 @@ export default function App() {
     window.location.reload();
   };
 
-  // Library Store Initialization
-  // NOTE: Library is fetched in selectProfile() when a profile is selected.
-  // We don't need to fetch here since that would race with profile selection.
   const fetchLibrary = useLibraryStore((s) => s.fetchLibrary);
 
-  // Individual selectors for profile store
   const activeProfileId = useProfileStore((s) => s.activeProfileId);
   const profiles = useProfileStore((s) => s.profiles);
   const loadProfiles = useProfileStore((s) => s.loadProfiles);
@@ -184,7 +160,6 @@ export default function App() {
     }
   }, [isSettingsLoading, activeProfileId, fetchLibrary]);
 
-  // Handle Close-to-Tray and Quit Confirmation - extracted to custom hook
   useWindowCloseHandler(() => setIsQuitDialogOpen(true));
 
   // Listen for global scan progress to refresh library - extracted to custom hook
@@ -224,6 +199,8 @@ export default function App() {
     return cleanup;
   }, [initSystemThemeListener]);
 
+  const { handleFolderImport, isScanning, setIsScanning } = useFolderImport();
+
   // Auto-close queue when empty
   const queue = useAudioStore((s) => s.queue);
   const setSidePanel = useAudioStore((s) => s.setSidePanel);
@@ -234,96 +211,20 @@ export default function App() {
     }
   }, [sidePanel, queue.length, setSidePanel]);
 
-  const handleFolderImport = useCallback(async () => {
-    try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-      });
-
-      if (selected && typeof selected === "string") {
-        setIsScanning(true);
-        const toastId = toast.loading(`Importing ${selected}...`);
-        logger.info("Importing folder:", selected);
-
-        let stats;
-
-        if (!libraryPaths.includes(selected)) {
-          // New folder: Add to settings (returns stats)
-          stats = await addLibraryPath(selected);
-          logger.info("Added folder to settings:", selected);
-        } else {
-          // Existing folder: Re-scan
-          logger.info("Rescanning existing folder:", selected);
-          stats = await invoke<{
-            scanned_count: number;
-            success_count: number;
-            error_count: number;
-          }>("scan_music_library", { folders: [selected] });
-          await fetchLibrary();
-        }
-
-        if (stats) {
-          if (stats.error_count > 0) {
-            toast.warning(`Scan complete with ${stats.error_count} errors`, {
-              id: toastId,
-              description: `Imported ${stats.success_count} tracks. Check logs for details.`,
-            });
-          } else {
-            toast.success(`Imported ${stats.scanned_count} tracks`, {
-              id: toastId,
-              description: "Library updated successfully.",
-            });
-          }
-        } else {
-          toast.success("Folder added", { id: toastId });
-        }
-      }
-    } catch (error) {
-      logger.error("Failed to import folder:", error);
-      toast.error("Failed to import folder", {
-        description: error instanceof Error ? error.message : String(error),
-      });
-    } finally {
-      setIsScanning(false);
-    }
-  }, [addLibraryPath, fetchLibrary, libraryPaths]);
-
-  const quitDialog = (
-    <ConfirmDialog
-      open={isQuitDialogOpen}
-      onOpenChange={setIsQuitDialogOpen}
-      title="Are you sure you want to quit?"
-      description='Playback will stop. You can enable "Close to Tray" in settings to keep music playing in the background.'
-      confirmText="Quit"
-      variant="destructive"
-      onConfirm={() => getCurrentWindow().destroy()}
-    />
-  );
-
-  if (isProfilesLoading) {
+  if (isProfilesLoading || !activeProfileId) {
     return (
-      <div className="h-screen w-screen bg-background text-foreground relative flex flex-col">
-        <TitleBar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4 animate-pulse">
-            <div className="w-12 h-12 rounded-full bg-foreground/10" />
-            <div className="w-32 h-4 rounded-full bg-foreground/10" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!activeProfileId) {
-    return (
-      <div className="h-screen w-screen bg-background text-foreground relative flex flex-col">
-        <TitleBar />
-        <div className="flex-1 overflow-hidden">
-          <ProfileSelectionPage />
-        </div>
-        {quitDialog}
-      </div>
+      <ShellStates
+        isProfilesLoading={isProfilesLoading}
+        activeProfileId={activeProfileId}
+        isQuitDialogOpen={isQuitDialogOpen}
+        setIsQuitDialogOpen={setIsQuitDialogOpen}
+        showProfileSwitchWarning={showProfileSwitchWarning}
+        setShowProfileSwitchWarning={setShowProfileSwitchWarning}
+        confirmProfileSwitch={confirmProfileSwitch}
+        isRefreshWarningOpen={isRefreshWarningOpen}
+        setIsRefreshWarningOpen={setIsRefreshWarningOpen}
+        handleConfirmRefresh={handleConfirmRefresh}
+      />
     );
   }
 
@@ -382,38 +283,16 @@ export default function App() {
       )}
       <GlobalSearch />
 
-      {quitDialog}
-      <ConfirmDialog
-        open={showProfileSwitchWarning}
-        onOpenChange={setShowProfileSwitchWarning}
-        title="Stop Playback?"
-        description="Switching profiles will stop the current playback. Do you want to continue?"
-        confirmText="Switch Profile"
-        onConfirm={confirmProfileSwitch}
+      <AppDialogs
+        isQuitDialogOpen={isQuitDialogOpen}
+        setIsQuitDialogOpen={setIsQuitDialogOpen}
+        showProfileSwitchWarning={showProfileSwitchWarning}
+        setShowProfileSwitchWarning={setShowProfileSwitchWarning}
+        confirmProfileSwitch={confirmProfileSwitch}
+        isRefreshWarningOpen={isRefreshWarningOpen}
+        setIsRefreshWarningOpen={setIsRefreshWarningOpen}
+        handleConfirmRefresh={handleConfirmRefresh}
       />
-
-      <AlertDialog
-        open={isRefreshWarningOpen}
-        onOpenChange={setIsRefreshWarningOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Stop Playback and Refresh?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Refreshing the app will stop the current playback. Are you sure
-              you want to continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmRefresh}>
-              Refresh
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Toaster />
     </main>
   );
 }
