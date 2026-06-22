@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { useScrollMask } from "@/hooks/use-scroll-mask";
 import { useStatsStore, type TimeRange } from "@/stores/stats-store";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { useAudioStore, useIsPlayerVisible } from "@/stores/audio-store";
@@ -89,6 +90,7 @@ export default function InsightsPage() {
   const { openAlbumDetail, openArtistDetail } = useNavigationStore();
   const play = useAudioStore((s) => s.play);
   const isPlayerVisible = useIsPlayerVisible();
+  const insightsScrollRef = useScrollMask();
 
   useEffect(() => {
     fetchStats();
@@ -143,6 +145,7 @@ export default function InsightsPage() {
       </div>
 
       <div
+        ref={insightsScrollRef}
         className={cn(
           "flex-1 overflow-y-auto overflow-x-hidden space-y-6 scroll-mask-y",
           isPlayerVisible ? "pb-39" : "pb-8",
