@@ -111,7 +111,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
   const checkAndRecordStats = (
     track: Track | null,
     durationMs: number,
-    positionMs: number
+    positionMs: number,
   ) => {
     if (!track) return;
     // Rule: Record if listened for at least 30 seconds OR 50% of the song
@@ -219,7 +219,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
       checkAndRecordStats(
         currentState.currentTrack,
         currentState.duration,
-        currentState.position
+        currentState.position,
       );
 
       set({
@@ -414,8 +414,8 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           const newStatus: PlaybackStatus = s.is_playing
             ? "playing"
             : s.is_paused
-            ? "paused"
-            : "stopped";
+              ? "paused"
+              : "stopped";
 
           set((state) => {
             // Ignore 'stopped' from backend when we're in 'loading' state
@@ -433,7 +433,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
               duration: s.duration_ms,
             };
           });
-        }
+        },
       );
 
       const unlistenProgress = listen<AudioPlaybackProgressPayload>(
@@ -474,7 +474,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
                 logger.debug(
                   "Triggering automatic crossfade",
                   s.position_ms,
-                  threshold
+                  threshold,
                 );
                 set({ _isTransitioning: true });
                 get().next();
@@ -486,7 +486,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
               set({ _isTransitioning: false });
             }
           }
-        }
+        },
       );
 
       const unlistenFinished = listen("audio-playback-finished", () => {
@@ -560,7 +560,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
             // Skip to next track
             get().next();
           }
-        }
+        },
       );
 
       return () => {
@@ -597,22 +597,6 @@ export const useDuration = () => useAudioStore((s) => s.duration);
 export const useIsPlayerVisible = () =>
   useAudioStore((s) => !!s.currentTrack && s.status !== "stopped");
 
-// Actions (static getters - never cause re-renders)
-export const getPlayerActions = () => {
-  const s = useAudioStore.getState();
-  return {
-    play: s.play,
-    pause: s.pause,
-    resume: s.resume,
-    stop: s.stop,
-    next: s.next,
-    previous: s.previous,
-    seek: s.seek,
-    setVolume: s.setVolume,
-    toggleMute: s.toggleMute,
-  };
-};
-
 export const getQueueActions = () => {
   const s = useAudioStore.getState();
   return {
@@ -625,13 +609,5 @@ export const getQueueActions = () => {
     toggleShuffle: s.toggleShuffle,
     toggleRepeat: s.toggleRepeat,
     clearQueue: s.clearQueue,
-  };
-};
-
-export const getProgressActions = () => {
-  const s = useAudioStore.getState();
-  return {
-    setPosition: s.setPosition,
-    setDraggingSlider: s.setDraggingSlider,
   };
 };

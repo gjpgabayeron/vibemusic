@@ -236,14 +236,4 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
 export const useCurrentPage = () => useNavigationStore((s) => s.currentPage);
 export const useDetailView = () => useNavigationStore((s) => s.detailView);
 
-// --- Static action getters ---
-export const getNavigationActions = () => {
-  const s = useNavigationStore.getState();
-  return {
-    setPage: s.setPage,
-    openAlbumDetail: s.openAlbumDetail,
-    openPlaylistDetail: s.openPlaylistDetail,
-    openArtistDetail: s.openArtistDetail,
-    goBack: s.goBack,
-  };
-};
+
