@@ -38,9 +38,11 @@ export function ProfileManageDialog({
   profile,
   onSave,
 }: ProfileManageDialogProps) {
-  const [name, setName] = useState("");
-  const [color, setColor] = useState(AVATAR_COLORS[0]);
-  const [avatarPath, setAvatarPath] = useState<string | undefined>(undefined);
+  const [name, setName] = useState(profile?.name ?? "");
+  const [color, setColor] = useState(profile?.color ?? AVATAR_COLORS[0]);
+  const [avatarPath, setAvatarPath] = useState<string | undefined>(
+    profile?.avatarPath ?? undefined
+  );
   const [avatarBytes, setAvatarBytes] = useState<Uint8Array | undefined>(
     undefined
   );
@@ -60,24 +62,7 @@ export function ProfileManageDialog({
     };
   }, [tempAvatarPreview]);
 
-  // Initialize form when opening/profile changes
-  useEffect(() => {
-    if (open) {
-      if (profile) {
-        setName(profile.name);
-        setColor(profile.color);
-        setAvatarPath(profile.avatarPath);
-        setAvatarBytes(undefined);
-        setTempAvatarPreview(undefined);
-      } else {
-        setName("");
-        setColor(AVATAR_COLORS[0]);
-        setAvatarPath(undefined);
-        setAvatarBytes(undefined);
-        setTempAvatarPreview(undefined);
-      }
-    }
-  }, [open, profile]);
+  const formKey = open ? (profile?.id ? `profile-${profile.id}` : "new") : "closed";
 
   const handleAvatarUpload = async () => {
     try {
@@ -150,6 +135,7 @@ export function ProfileManageDialog({
   return (
     <>
       <StandardDialog
+        key={formKey}
         open={open}
         onOpenChange={onOpenChange}
         title={profile ? "Edit Profile" : "Add Profile"}
