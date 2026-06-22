@@ -95,11 +95,12 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
       if (state.isMiniPlayer) {
         // EXITING MINI PLAYER
         logger.debug("Exiting Mini Player...");
-        await appWindow.setAlwaysOnTop(false);
-
-        // Restore min size constraints for main app
-        await appWindow.setMinSize(new LogicalSize(1280, 720));
-        await appWindow.setMaxSize(null); // Unset max size
+        await Promise.all([
+          appWindow.setAlwaysOnTop(false),
+          // Restore min size constraints for main app
+          appWindow.setMinSize(new LogicalSize(1280, 720)),
+          appWindow.setMaxSize(null), // Unset max size
+        ]);
 
         // If window was maximized before, restore to maximized state
         if (state.wasMaximized) {
@@ -142,12 +143,13 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
         logger.debug("Entering Mini Player...");
 
         // Check if currently maximized before switching
-        const isCurrentlyMaximized = await appWindow.isMaximized();
-
-        const factor = await appWindow.scaleFactor();
-        const size = await appWindow.innerSize();
+        const [isCurrentlyMaximized, factor, size, position] = await Promise.all([
+          appWindow.isMaximized(),
+          appWindow.scaleFactor(),
+          appWindow.innerSize(),
+          appWindow.outerPosition(),
+        ]);
         const logicalSize = size.toLogical(factor);
-        const position = await appWindow.outerPosition();
 
         set({
           previousWindowSize: {
@@ -184,9 +186,11 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
         }
 
         // Lock window size
-        await appWindow.setMinSize(new LogicalSize(width, height));
-        await appWindow.setMaxSize(new LogicalSize(width, height));
-        await appWindow.setSize(new LogicalSize(width, height));
+        await Promise.all([
+          appWindow.setMinSize(new LogicalSize(width, height)),
+          appWindow.setMaxSize(new LogicalSize(width, height)),
+          appWindow.setSize(new LogicalSize(width, height)),
+        ]);
 
         // Position based on user preference
         const monitor = await currentMonitor();

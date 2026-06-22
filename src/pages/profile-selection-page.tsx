@@ -52,15 +52,19 @@ export default function ProfileSelectionPage() {
       return;
     }
 
-    await selectProfile(id);
-    await loadSettings(id);
+    await Promise.all([
+      selectProfile(id),
+      loadSettings(id),
+    ]);
   };
 
   const confirmProfileSwitch = async () => {
     if (pendingProfileId) {
       await stop();
-      await selectProfile(pendingProfileId);
-      await loadSettings(pendingProfileId);
+      await Promise.all([
+        selectProfile(pendingProfileId),
+        loadSettings(pendingProfileId),
+      ]);
       setPendingProfileId(null);
     }
   };

@@ -66,8 +66,10 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         };
         const newProfiles = [defaultProfile];
 
-        await store.set("profiles", newProfiles);
-        await store.set("activeProfileId", defaultProfile.id);
+        await Promise.all([
+          store.set("profiles", newProfiles),
+          store.set("activeProfileId", defaultProfile.id),
+        ]);
         await store.save();
 
         // Notify backend FIRST
