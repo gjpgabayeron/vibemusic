@@ -67,18 +67,27 @@ export default function LyricsPanel() {
       });
   }, [currentTrack, sidePanel, lyricsCache]);
 
-  // Determine active line index
+  // Determine active line index via binary search (timestamps are monotonic)
   const activeIndex = useMemo(() => {
     if (!isSynced || !lyrics.length) return -1;
-    // Find the last line that has a timestamp <= current position
-    // We iterate backwards for efficiency or just typical findLastIndex equivalent
-    for (let i = lyrics.length - 1; i >= 0; i--) {
-      const lineTime = lyrics[i].timestamp_ms;
-      if (lineTime !== null && lineTime <= position) {
-        return i;
+    const first = lyrics[0].timestamp_ms;
+    const last = lyrics[lyrics.length - 1].timestamp_ms;
+    if (first === null || last === null) return -1;
+    if (position <= first) return -1;
+    if (position >= last) return lyrics.length - 1;
+
+    let lo = 0;
+    let hi = lyrics.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      const t = lyrics[mid].timestamp_ms;
+      if (t !== null && t <= position) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
       }
     }
-    return -1;
+    return lo;
   }, [lyrics, position, isSynced]);
 
   // Auto-scroll logic
@@ -99,7 +108,7 @@ export default function LyricsPanel() {
       // Scroll to center the element
       container.scrollTo({
         top: elementTop - containerHeight / 2 + elementHeight / 2,
-        behavior: "smooth",
+        behavior: "instant",
       });
     }
   }, [activeIndex, autoScroll]);
