@@ -414,6 +414,7 @@ impl AudioWorker {
     }
 
     fn run(&mut self) {
+        let mut last_progress_emit = Instant::now();
         loop {
             match self.receiver.recv_timeout(Duration::from_millis(5)) {
                 Ok(cmd) => self.handle_command(cmd),
@@ -424,7 +425,10 @@ impl AudioWorker {
                     if self.is_playing.load(Ordering::Relaxed) {
                         self.decode_and_push();
                     }
-                    self.emit_progress();
+                    if last_progress_emit.elapsed() >= Duration::from_millis(250) {
+                        self.emit_progress();
+                        last_progress_emit = Instant::now();
+                    }
                 }
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
             }
