@@ -70,14 +70,14 @@ export default function QueueMenu() {
       <div className="flex-1 overflow-hidden h-full flex flex-col">
         {/* Tracks list header */}
         <div className="flex items-center justify-between mb-3 shrink-0">
-          <h2 className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
             Tracks
           </h2>
           {queue.length > 1 && (
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs h-6 px-2 text-muted-foreground hover:text-red-400"
+              className="text-xs h-6 px-2 text-muted-foreground hover:text-destructive"
               onClick={clearQueue}
             >
               Clear

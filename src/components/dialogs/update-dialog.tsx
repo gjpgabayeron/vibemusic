@@ -79,7 +79,7 @@ export function UpdateDialog({
       </div>
 
       {error && (
-        <div className="text-red-400 text-sm mb-4 px-1">Error: {error}</div>
+        <div className="text-destructive text-sm mb-4 px-1">Error: {error}</div>
       )}
     </StandardDialog>
   );

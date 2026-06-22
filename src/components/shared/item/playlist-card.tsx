@@ -185,7 +185,7 @@ const PlaylistCard = memo(function PlaylistCard({
 
         {onDelete && (
           <ContextMenuItem
-            className="text-red-500 focus:text-red-500 focus:bg-red-500/10"
+            className="text-destructive focus:text-destructive focus:bg-destructive/10"
             onSelect={() => onDelete(playlist)}
           >
             <Trash2 className="mr-2 h-4 w-4" /> Delete

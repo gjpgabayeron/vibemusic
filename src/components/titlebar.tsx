@@ -94,7 +94,7 @@ export function TitleBar() {
             <button
               type="button"
               onClick={() => appWindow.close()}
-              className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded-md transition-colors text-muted-foreground cursor-pointer"
+              className="p-2 hover:bg-destructive/20 hover:text-destructive rounded-md transition-colors text-muted-foreground cursor-pointer"
             >
               <X size={14} />
             </button>

@@ -41,7 +41,7 @@ export function TrendIndicator({ value, className }: TrendIndicatorProps) {
     <div
       className={cn(
         "flex items-center gap-1 text-xs font-medium",
-        isPositive ? "text-green-500" : "text-red-500",
+        isPositive ? "text-green-500" : "text-destructive",
         className,
       )}
     >

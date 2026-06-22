@@ -204,7 +204,7 @@ export function SettingsLibrary() {
                     variant="ghost"
                     size="icon"
                     onClick={() => removeLibraryPath(path)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 hover:bg-red-950/30"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/30"
                   >
                     <Trash2 size={16} />
                   </Button>
@@ -240,7 +240,7 @@ export function SettingsLibrary() {
               variant="outline"
               onClick={handlePrune}
               disabled={isPruning}
-              className="gap-2 hover:text-red-400 hover:border-red-900/50"
+              className="gap-2 hover:text-destructive hover:border-destructive/50"
             >
               <Trash2 size={16} />
               {isPruning ? "Pruning..." : "Prune Deleted Files"}

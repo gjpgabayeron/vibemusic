@@ -52,7 +52,7 @@ export function SearchResultItem({
             <ScrollingText className="font-medium group-data-[selected=true]:text-primary transition-colors w-full">
               {primary}
             </ScrollingText>
-            <span className="text-xs text-neutral-500 truncate block">
+            <span className="text-xs text-muted-foreground truncate block">
               {secondary}
             </span>
           </div>

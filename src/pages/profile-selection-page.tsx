@@ -164,7 +164,7 @@ export default function ProfileSelectionPage() {
                           setDeleteId(profile.id);
                         }
                       }}
-                      className="p-2 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-500 transition-colors"
+                      className="p-2 rounded-full bg-destructive/20 hover:bg-destructive/40 text-destructive transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </div>

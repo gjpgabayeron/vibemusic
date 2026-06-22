@@ -101,7 +101,7 @@ export function PlaylistHero({
           <Button
             variant="outline"
             size="icon-lg"
-            className="text-red-400 hover:text-red-300 hover:border-red-900/50"
+            className="text-destructive hover:text-destructive hover:border-destructive/50"
             title="Delete Playlist"
             onClick={onDelete}
           >

@@ -49,7 +49,7 @@ function MetadataValue({ children, className = "" }: { children: React.ReactNode
 export default function TrackMetadata({ track, metadata }: TrackMetadataProps) {
   return (
     <div className="grid gap-3">
-      <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">
+      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">
         Properties
       </h3>
 

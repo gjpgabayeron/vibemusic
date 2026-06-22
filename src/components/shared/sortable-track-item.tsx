@@ -62,7 +62,7 @@ export function SortableTrackItem({ track, index, onRemove }: SortableTrackItemP
       <Button
         variant="ghost"
         size="icon"
-        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400"
+        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
         onClick={onRemove}
         title="Remove from playlist"
       >

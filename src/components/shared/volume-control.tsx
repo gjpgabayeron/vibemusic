@@ -20,7 +20,7 @@ export function VolumeControl({ volume, onVolumeChange, onToggleMute }: VolumeCo
         <TooltipTrigger asChild>
           <Button variant="ghost" onClick={onToggleMute}>
             {volume === 0 ? (
-              <VolumeX size={20} className="text-gray-400" />
+              <VolumeX size={20} className="text-muted-foreground" />
             ) : volume < 0.5 ? (
               <Volume1 size={20} />
             ) : (
