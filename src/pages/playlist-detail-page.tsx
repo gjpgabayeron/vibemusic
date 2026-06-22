@@ -8,94 +8,24 @@ import {
   Playlist,
 } from "@/lib/api";
 import { useNavigationStore, useDetailView } from "@/stores/navigation-store";
-import { useAudioStore, useCurrentTrack } from "@/stores/audio-store";
-import { ChevronLeft, Play, Trash2, Plus, Music, Pencil, GripVertical } from "lucide-react";
+import { useAudioStore } from "@/stores/audio-store";
+import { ChevronLeft, Plus, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import MusicListItem from "@/components/shared/item/music-list";
-import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { ArtworkImage } from "@/components/shared/artwork-image";
 import { useLibraryStore } from "@/stores/library-store";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PlaylistEditDialog } from "@/components/dialogs/playlist-edit-dialog";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { TrackSelectDialog } from "@/components/dialogs/track-select-dialog";
 import { VirtualizedSortableList } from "@/components/shared/virtualized-sortable-list";
 import { TrackListHeader } from "@/components/shared/track-list-header";
 import { CompactPageHeader } from "@/components/shared/compact-page-header";
-import { formatDuration } from "@/lib/format";
 import { PageLayout } from "@/components/shared/page-layout";
-
-interface SortableTrackItemProps {
-  track: Track;
-  index: number;
-  onRemove: (e: React.MouseEvent) => void;
-}
-
-function SortableTrackItem({ track, index, onRemove }: SortableTrackItemProps) {
-  const currentTrack = useCurrentTrack();
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: track.id });
-
-  const isCurrentTrack = currentTrack?.id === track.id;
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : "auto",
-    position: "relative" as const,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`group flex items-center gap-2 hover:bg-accent/50 rounded-md pr-2 transition-colors ${
-        isDragging ? "bg-accent shadow-xl" : ""
-      } ${
-        isCurrentTrack && !isDragging
-          ? "bg-accent/50 outline outline-border"
-          : ""
-      }`}
-    >
-      <div
-        className="w-12 flex items-center justify-center shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground group-hover:text-foreground"
-        {...attributes}
-        {...listeners}
-      >
-        <span className="text-sm font-variant-numeric tabular-nums group-hover:hidden">
-          {index + 1}
-        </span>
-        <GripVertical size={16} className="hidden group-hover:block" />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <MusicListItem track={track} disableHover />
-      </div>
-
-      <Button
-        variant="ghost"
-        size="icon"
-        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400"
-        onClick={onRemove}
-        title="Remove from playlist"
-      >
-        <Trash2 size={16} />
-      </Button>
-    </div>
-  );
-}
+import { PlaylistHero } from "@/components/shared/playlist-hero";
+import { SortableTrackItem } from "@/components/shared/sortable-track-item";
 
 export default function PlaylistDetailPage() {
   const detailView = useDetailView();
@@ -112,7 +42,6 @@ export default function PlaylistDetailPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [imageError, setImageError] = useState(false);
 
   const playlistId = detailView?.type === "playlist" ? detailView.id : null;
 
@@ -127,7 +56,6 @@ export default function PlaylistDetailPage() {
 
       const found = allPlaylists.find((p) => p.id === playlistId);
       if (found) setPlaylist(found);
-      setImageError(false);
       setTracks(tracksData);
     } catch (error) {
       logger.error("Failed to load playlist", error);
@@ -145,6 +73,13 @@ export default function PlaylistDetailPage() {
       play(tracks[0], tracks);
     }
   };
+
+  const handleShuffle = useCallback(() => {
+    if (tracks.length > 0) {
+      const shuffled = [...tracks].sort(() => Math.random() - 0.5);
+      play(shuffled[0], shuffled);
+    }
+  }, [tracks, play]);
 
   const handleDelete = async () => {
     if (!playlistId) return;
@@ -266,118 +201,61 @@ export default function PlaylistDetailPage() {
               </Button>
             </div>
 
-            {/* Playlist info header */}
-            <div className="flex gap-6 mb-6 px-2">
-              <div className="w-40 h-40 rounded-lg bg-linear-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center text-muted-foreground text-6xl font-bold select-none shrink-0 overflow-hidden shadow-xl">
-                {playlist.artwork_path && !imageError ? (
-                  <ArtworkImage
-                    src={playlist.artwork_path}
-                    alt={playlist.name}
-                    className="w-full h-full object-cover"
-                    onError={() => setImageError(true)}
-                  />
-                ) : (
-                  playlist.name.slice(0, 2).toUpperCase()
-                )}
-              </div>
+            <PlaylistHero
+              coverUrl={playlist.artwork_path || undefined}
+              title={playlist.name}
+              description={playlist.description || undefined}
+              trackCount={tracks.length}
+              totalDurationMs={totalDurationMs}
+              lastModified={playlist.created_at}
+              onEdit={() => setIsEditOpen(true)}
+              onDelete={() => setIsDeleteDialogOpen(true)}
+              onPlayAll={handlePlay}
+              onShuffle={handleShuffle}
+            >
+              <Button
+                variant="outline"
+                size="lg"
+                className="gap-2 rounded-full"
+                onClick={() => setIsAddSongOpen(true)}
+              >
+                <Plus size={20} />
+                Add Songs
+              </Button>
+            </PlaylistHero>
 
-              <div className="flex flex-col justify-center min-w-0">
-                <h2 className="text-4xl font-bold text-foreground line-clamp-2 mb-2">
-                  {playlist.name}
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  {playlist.description || "No description"}
-                </p>
-                <div className="text-muted-foreground text-sm flex gap-2 items-center mt-2">
-                  <span>{tracks.length} songs</span>
-                  <span>•</span>
-                  <span>{formatDuration(totalDurationMs)}</span>
-                  <span>•</span>
-                  <span>
-                    Created{" "}
-                    {formatDistanceToNow(new Date(playlist.created_at), {
-                      addSuffix: true,
-                    })}
-                  </span>
-                </div>
+            <ConfirmDialog
+              open={isDeleteDialogOpen}
+              onOpenChange={setIsDeleteDialogOpen}
+              title="Delete Playlist?"
+              description={`This action cannot be undone. This will permanently delete the playlist "${playlist.name}".`}
+              confirmText="Delete"
+              variant="destructive"
+              onConfirm={handleDelete}
+              isLoading={isDeleting}
+              loadingText="Deleting..."
+            />
 
-                {/* Action buttons */}
-                <div className="flex gap-2 mt-6">
-                  <Button
-                    variant="default"
-                    size="lg"
-                    onClick={handlePlay}
-                    disabled={tracks.length === 0}
-                    className="gap-2 rounded-full px-8 bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    <Play size={20} fill="currentColor" />
-                    Play
-                  </Button>
+            <PlaylistEditDialog
+              playlist={playlist}
+              open={isEditOpen}
+              onOpenChange={(open) => {
+                setIsEditOpen(open);
+                if (!open) loadData();
+              }}
+            />
 
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="gap-2 rounded-full"
-                    onClick={() => setIsAddSongOpen(true)}
-                  >
-                    <Plus size={20} />
-                    Add Songs
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="icon-lg"
-                    onClick={() => setIsEditOpen(true)}
-                    title="Edit Playlist"
-                  >
-                    <Pencil size={20} />
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="icon-lg"
-                    className="text-red-400 hover:text-red-300 hover:border-red-900/50"
-                    title="Delete Playlist"
-                    onClick={() => setIsDeleteDialogOpen(true)}
-                  >
-                    <Trash2 size={20} />
-                  </Button>
-
-                  <ConfirmDialog
-                    open={isDeleteDialogOpen}
-                    onOpenChange={setIsDeleteDialogOpen}
-                    title="Delete Playlist?"
-                    description={`This action cannot be undone. This will permanently delete the playlist "${playlist.name}".`}
-                    confirmText="Delete"
-                    variant="destructive"
-                    onConfirm={handleDelete}
-                    isLoading={isDeleting}
-                    loadingText="Deleting..."
-                  />
-
-                  <PlaylistEditDialog
-                    playlist={playlist}
-                    open={isEditOpen}
-                    onOpenChange={(open) => {
-                      setIsEditOpen(open);
-                      if (!open) loadData();
-                    }}
-                  />
-
-                  {playlistId && (
-                    <TrackSelectDialog
-                      open={isAddSongOpen}
-                      onOpenChange={(open) => {
-                        setIsAddSongOpen(open);
-                        if (!open) loadData();
-                      }}
-                      playlistId={playlistId}
-                      existingTrackIds={new Set(tracks.map((t) => t.id))}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
+            {playlistId && (
+              <TrackSelectDialog
+                open={isAddSongOpen}
+                onOpenChange={(open) => {
+                  setIsAddSongOpen(open);
+                  if (!open) loadData();
+                }}
+                playlistId={playlistId}
+                existingTrackIds={new Set(tracks.map((t) => t.id))}
+              />
+            )}
 
             {/* Header Row - Only show if has tracks */}
             {tracks.length > 0 && (
