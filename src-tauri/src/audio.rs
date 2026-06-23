@@ -15,7 +15,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 use std::fs::File;
 use tauri::{AppHandle, Emitter, Manager};
-use log::{info, error, warn};
+use log::{debug, info, error, warn};
 
 use symphonia::core::codecs::audio::*;
 use symphonia::core::formats::*;
@@ -536,16 +536,17 @@ impl AudioWorker {
             && self.primary_decoder.is_some()
             && !is_same_track;
 
-        if should_crossfade {
-            match SymphoniaDecoder::new(path) {
-                Ok((decoder, buf)) => {
-                    info!("Crossfading to new track: {}", path);
-                    self.secondary_decoder = Some(decoder);
-                    self.secondary_buffer = buf;
-                    self.crossfade_state = CrossfadeState::Fading {
-                        start_time: Instant::now(),
-                        duration: self.crossfade_setting,
-                    };
+                if should_crossfade {
+                    match SymphoniaDecoder::new(path) {
+                        Ok((decoder, buf)) => {
+                            info!("Crossfading to new track: {}", path);
+                            debug!("Crossfade duration: {:?}", self.crossfade_setting);
+                            self.secondary_decoder = Some(decoder);
+                            self.secondary_buffer = buf;
+                            self.crossfade_state = CrossfadeState::Fading {
+                                start_time: Instant::now(),
+                                duration: self.crossfade_setting,
+                            };
 
                     self.resample_buf.resize(self.secondary_buffer.len() * 2, 0.0);
                     self.duration_ms = self.secondary_decoder.as_ref().map(|d| d.duration_ms()).unwrap_or(0);
@@ -809,6 +810,7 @@ impl AudioWorker {
                         crossfade_progress = elapsed.as_secs_f32() / duration.as_secs_f32();
                         is_fading = true;
                     } else {
+                        debug!("Crossfade complete, swapping to secondary decoder");
                         self.primary_decoder = self.secondary_decoder.take();
                         if self.primary_buffer.len() != self.secondary_buffer.len() {
                             self.primary_buffer.resize(self.secondary_buffer.len(), 0.0);
