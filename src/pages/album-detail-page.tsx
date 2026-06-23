@@ -18,6 +18,7 @@ import { ArtistLinks } from "@/components/shared/artist-links";
 import { VirtualizedList } from "@/components/shared/virtualized-list";
 import { DetailPageTemplate } from "@/components/shared/templates/detail-page-template";
 import { DetailHero } from "@/components/shared/detail-hero";
+import { DetailSkeleton } from "@/components/skeletons";
 import { formatDuration } from "@/lib/format";
 
 export default function AlbumDetailPage() {
@@ -75,7 +76,7 @@ export default function AlbumDetailPage() {
   };
 
   if (!album) {
-    if (isLoading) return null; // Wait for loading
+    if (isLoading) return <DetailSkeleton />;
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-muted-foreground">Album not found</div>

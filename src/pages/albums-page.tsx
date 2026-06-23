@@ -14,6 +14,7 @@ import { VirtualizedGrid } from "@/components/shared/virtualized-grid";
 import { PageHeader } from "@/components/shared/page-header";
 import { SortDropdown } from "@/components/shared/sort-dropdown";
 import { PageLayout } from "@/components/shared/page-layout";
+import { AlbumsSkeleton } from "@/components/skeletons";
 
 export default function AlbumsPage() {
   const albums = useLibraryStore((s) => s.albums);
@@ -93,6 +94,10 @@ export default function AlbumsPage() {
       return 0;
     });
   }, [albums, albumsSortKey, albumsSortDirection, searchQuery]);
+
+  if (isLoading && albums.length === 0) {
+    return <AlbumsSkeleton />;
+  }
 
   return (
     <PageLayout overflowHidden>

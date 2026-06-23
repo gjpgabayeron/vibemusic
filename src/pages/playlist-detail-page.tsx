@@ -25,6 +25,7 @@ import { TrackListHeader } from "@/components/shared/track-list-header";
 import { CompactPageHeader } from "@/components/shared/compact-page-header";
 import { PageLayout } from "@/components/shared/page-layout";
 import { PlaylistHero } from "@/components/shared/playlist-hero";
+import { DetailSkeleton } from "@/components/skeletons";
 import { SortableTrackItem } from "@/components/shared/sortable-track-item";
 
 export default function PlaylistDetailPage() {
@@ -114,7 +115,7 @@ export default function PlaylistDetailPage() {
   };
 
   if (!playlist) {
-    if (isLoading) return null;
+    if (isLoading) return <DetailSkeleton />;
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-muted-foreground">Playlist not found</div>

@@ -27,6 +27,7 @@ import { useLibraryStore } from "@/stores/library-store";
 import { useIsPlayerVisible } from "@/stores/audio-store";
 import { PageHeader } from "@/components/shared/page-header";
 import { PageLayout } from "@/components/shared/page-layout";
+import { SongsSkeleton } from "@/components/skeletons";
 
 type SortKey = "title" | "artist" | "date_added" | "duration";
 type SortDirection = "asc" | "desc";
@@ -128,6 +129,10 @@ export default function SongsPage() {
   // Dynamic padding based on player visibility
   const isPlayerVisible = useIsPlayerVisible();
   const bottomPadding = isPlayerVisible ? 156 : 24;
+
+  if (isLoading && tracks.length === 0) {
+    return <SongsSkeleton />;
+  }
 
   return (
     <PageLayout overflowHidden>

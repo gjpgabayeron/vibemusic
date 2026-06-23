@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { SortDropdown } from "@/components/shared/sort-dropdown";
 import { Input } from "@/components/ui/input";
 import { PageLayout } from "@/components/shared/page-layout";
+import { ArtistsSkeleton } from "@/components/skeletons";
 
 export default function ArtistsPage() {
   const artists = useLibraryStore((s) => s.artists);
@@ -91,6 +92,10 @@ export default function ArtistsPage() {
       return 0;
     });
   }, [artists, artistsSortKey, artistsSortDirection, searchQuery]);
+
+  if (isLoading && artists.length === 0) {
+    return <ArtistsSkeleton />;
+  }
 
   return (
     <PageLayout overflowHidden>

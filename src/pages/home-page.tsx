@@ -22,6 +22,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { useLibraryStore } from "@/stores/library-store";
 import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
 import { PageLayout } from "@/components/shared/page-layout";
+import { HomeSkeleton } from "@/components/skeletons";
 
 export default function HomePage() {
   const albums = useLibraryStore((s) => s.albums);
@@ -170,6 +171,10 @@ export default function HomePage() {
     displayAlbums.length === 0 &&
     displayPlaylists.length === 0 &&
     recentTracks.length === 0;
+
+  if (isLoading && albums.length === 0 && playlists.length === 0 && tracks.length === 0) {
+    return <HomeSkeleton />;
+  }
 
   return (
     <PageLayout overflowHidden>
