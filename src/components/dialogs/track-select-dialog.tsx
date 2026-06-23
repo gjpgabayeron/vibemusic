@@ -13,6 +13,7 @@ import { useLibraryStore } from "@/stores/library-store";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { logger } from "@/lib/logger";
 import placeholderArt from "@/assets/placeholder-art.png";
+import { ScrollingText } from "../shared/scrolling-text";
 
 interface TrackSelectDialogProps {
   open: boolean;
@@ -31,7 +32,7 @@ export function TrackSelectDialog({
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<number>>(
-    new Set()
+    new Set(),
   );
   const [isAdding, setIsAdding] = useState(false);
 
@@ -64,7 +65,7 @@ export function TrackSelectDialog({
       (t) =>
         t.title.toLowerCase().includes(lower) ||
         (t.artist && t.artist.toLowerCase().includes(lower)) ||
-        (t.album && t.album.toLowerCase().includes(lower))
+        (t.album && t.album.toLowerCase().includes(lower)),
     );
   }, [tracks, search, existingTrackIds]);
 
@@ -87,7 +88,7 @@ export function TrackSelectDialog({
       // Add all selected tracks
       // We can do this in parallel
       await Promise.all(
-        Array.from(selectedTrackIds).map((id) => addToPlaylist(playlistId, id))
+        Array.from(selectedTrackIds).map((id) => addToPlaylist(playlistId, id)),
       );
       onOpenChange(false);
     } catch (e) {
@@ -135,11 +136,14 @@ export function TrackSelectDialog({
                   <button
                     type="button"
                     key={track.id}
-                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors text-left ${
                       isSelected ? "bg-accent" : "hover:bg-accent/50"
                     }`}
                     onClick={() => toggleSelection(track.id)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleSelection(track.id); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ")
+                        toggleSelection(track.id);
+                    }}
                   >
                     <img
                       src={
@@ -153,10 +157,10 @@ export function TrackSelectDialog({
                     <div className="flex-1 min-w-0">
                       <div
                         className={`text-sm font-medium truncate ${
-                          isSelected ? "text-indigo-400" : "text-foreground"
+                          isSelected ? "text-primary" : "text-foreground"
                         }`}
                       >
-                        {track.title}
+                        <ScrollingText>{track.title}</ScrollingText>
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {track.artist || "Unknown Artist"}
@@ -165,7 +169,7 @@ export function TrackSelectDialog({
                     <div
                       className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
                         isSelected
-                          ? "bg-indigo-500 border-indigo-500 text-white"
+                          ? "bg-primary border-primary text-white"
                           : "border-muted-foreground text-transparent"
                       }`}
                     >
@@ -185,7 +189,7 @@ export function TrackSelectDialog({
           <Button
             onClick={handleConfirm}
             disabled={selectedTrackIds.size === 0 || isAdding}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {isAdding
               ? "Adding..."
