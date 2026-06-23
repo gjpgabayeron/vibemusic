@@ -2,9 +2,11 @@ use log::warn;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::probe::Probe;
 use lofty::tag::{Accessor, ItemKey};
+use regex::Regex;
 use std::path::Path;
 use serde::Deserialize;
 use std::fs;
+use std::sync::OnceLock;
 
 #[derive(serde::Serialize, Clone, Debug)]
 pub struct LyricLine {
@@ -166,8 +168,11 @@ async fn fetch_from_lrclib(title: &str, artist: &str, album: &str, duration: u64
 }
 
 fn parse_lrc(content: &str) -> Vec<LyricLine> {
+    static LRC_REGEX: OnceLock<Regex> = OnceLock::new();
+    let re = LRC_REGEX.get_or_init(|| {
+        Regex::new(r"^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)$").expect("invalid LRC regex")
+    });
     let mut lines = Vec::new();
-    let re = regex::Regex::new(r"^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)$").expect("invalid LRC regex");
 
     for line in content.lines() {
         let line = line.trim();
