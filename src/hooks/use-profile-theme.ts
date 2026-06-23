@@ -53,7 +53,7 @@ export function useProfileTheme() {
       return;
     }
 
-    const [h, _s, originalL] = hexToHsl(color);
+    const [h, , originalL] = hexToHsl(color);
     if (typeof h !== "number" || isNaN(h)) {
       logger.warn("[theme] Invalid hue from profile color:", color);
       reset();
