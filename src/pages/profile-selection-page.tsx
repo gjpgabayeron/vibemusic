@@ -3,11 +3,13 @@ import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
 import { useScrollMask } from "@/hooks/use-scroll-mask";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useAudioStore } from "@/stores/audio-store";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { logger } from "@/lib/logger";
+import { Pencil, Plus, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ProfileManageDialog } from "@/components/dialogs/profile-manage-dialog";
 import { useProfileStore, Profile } from "@/stores/profile-store";
-
+import { EmptyState } from "@/components/shared/empty-state";
 import { ArtworkImage } from "@/components/shared/artwork-image";
 
 export default function ProfileSelectionPage() {
@@ -18,6 +20,7 @@ export default function ProfileSelectionPage() {
     updateProfile,
     selectProfile,
     deleteProfile,
+    isLoading,
   } = useProfileStore();
   const loadSettings = useSettingsStore((s) => s.loadSettings);
 
@@ -38,7 +41,13 @@ export default function ProfileSelectionPage() {
   useScrollMask(32, scrollRef);
 
   useEffect(() => {
-    loadProfiles();
+    (async () => {
+      try {
+        await loadProfiles();
+      } catch (err) {
+        logger.error("Failed to load profiles", err);
+      }
+    })();
   }, [loadProfiles]);
 
   const handleSelectProfile = async (id: string) => {
@@ -85,6 +94,43 @@ export default function ProfileSelectionPage() {
       setDeleteId(null);
     }
   };
+
+  if (isLoading && profiles.length === 0) {
+    return (
+      <div className="h-screen w-full bg-background gap-6 text-foreground flex flex-col items-center justify-center pt-16 pb-6 animate-in fade-in duration-700 overflow-hidden">
+        <div className="text-center">
+          <Skeleton className="h-10 w-64 mx-auto bg-foreground/10 rounded-lg" />
+          <Skeleton className="h-4 w-48 mx-auto mt-3 bg-foreground/5 rounded-lg" />
+        </div>
+        <div className="flex gap-4 mt-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center gap-2 w-28">
+              <Skeleton className="w-28 h-28 rounded-full bg-foreground/5" />
+              <Skeleton className="h-4 w-20 bg-foreground/10 rounded-lg" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoading && profiles.length === 0) {
+    return (
+      <div className="h-screen w-full bg-background gap-6 text-foreground flex flex-col items-center justify-center pt-16 pb-6 animate-in fade-in duration-700 overflow-hidden">
+        <EmptyState
+          icon={User}
+          title="No profiles yet"
+          description="Create a profile to get started with Vibe Music."
+          action={
+            <Button variant="outline" size="lg" onClick={openCreateDialog}>
+              <Plus className="w-5 h-5 mr-2" />
+              Create Profile
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-full bg-background gap-6 text-foreground flex flex-col items-center justify-center pt-16 pb-6 animate-in fade-in duration-700 overflow-hidden">
