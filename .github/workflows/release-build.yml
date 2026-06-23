@@ -166,7 +166,7 @@ jobs:
                   $signature = (Get-Content $sigFile -Raw).Trim()
                 }
                 $platforms[$key] = @{
-                  url = "$baseUrl/$filename"
+                  url = "$baseUrl/$([Uri]::EscapeDataString($filename))"
                   signature = $signature
                 }
                 break
