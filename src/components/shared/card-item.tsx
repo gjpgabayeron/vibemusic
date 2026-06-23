@@ -12,10 +12,11 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        portrait: "rounded-lg p-3 hover:bg-accent",
-        landscape: "flex-row gap-4 p-2 hover:bg-accent rounded-md items-center",
+        portrait: "rounded-lg p-3 hover:bg-accent/10",
+        landscape:
+          "flex-row gap-4 p-2 hover:bg-accent/10 rounded-md items-center",
         compact: "w-40 shrink-0 space-y-3",
-        circle: "rounded-lg p-3 hover:bg-accent items-center",
+        circle: "rounded-lg p-3 hover:bg-accent/10 items-center",
       },
     },
     defaultVariants: {
