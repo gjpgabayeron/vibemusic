@@ -3,11 +3,13 @@ import { cn } from "@/lib/utils";
 
 interface ScrollingTextProps extends React.HTMLAttributes<HTMLDivElement> {
   children: string;
+  trigger?: "hover" | "always";
 }
 
 export function ScrollingText({
   children,
   className,
+  trigger: triggerProp = "hover",
   ...props
 }: ScrollingTextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -17,9 +19,11 @@ export function ScrollingText({
   useEffect(() => {
     const checkOverflow = () => {
       if (containerRef.current && textRef.current) {
-        setIsOverflowing(
-          textRef.current.scrollWidth > containerRef.current.clientWidth
-        );
+        const textEl = textRef.current.firstElementChild;
+        const textWidth = textEl
+          ? textEl.scrollWidth
+          : textRef.current.scrollWidth;
+        setIsOverflowing(textWidth >= containerRef.current.clientWidth);
       }
     };
 
@@ -41,8 +45,11 @@ export function ScrollingText({
         ref={textRef}
         className={cn(
           "inline-block transition-transform will-change-transform",
-          isOverflowing &&
-            "motion-safe:hover:animate-scroll-text motion-safe:group-hover:animate-scroll-text motion-safe:group-data-[selected=true]:animate-scroll-text"
+          triggerProp === "always"
+            ? isOverflowing &&
+                "motion-safe:animate-scroll-text motion-safe:group-data-[selected=true]:animate-scroll-text"
+            : isOverflowing &&
+                "motion-safe:hover:animate-scroll-text motion-safe:group-hover:animate-scroll-text motion-safe:group-data-[selected=true]:animate-scroll-text",
         )}
         style={
           isOverflowing
@@ -53,7 +60,11 @@ export function ScrollingText({
         }
       >
         <span className="inline-block pr-8">{children}</span>
-        {isOverflowing && <span aria-hidden="true" className="inline-block pr-8">{children}</span>}
+        {isOverflowing && (
+          <span aria-hidden="true" className="inline-block pr-8">
+            {children}
+          </span>
+        )}
       </div>
     </div>
   );
