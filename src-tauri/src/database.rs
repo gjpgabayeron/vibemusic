@@ -80,6 +80,10 @@ impl DbHelper {
                 "CREATE INDEX IF NOT EXISTS idx_albums_artist_year ON albums(artist_id, year DESC)",
                 [],
             )?;
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_tracks_title ON tracks(title COLLATE NOCASE)",
+                [],
+            )?;
 
             // Playback History Table
             conn.execute(
