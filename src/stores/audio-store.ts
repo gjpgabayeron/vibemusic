@@ -461,7 +461,10 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           const crossfadeMs =
             useSettingsStore.getState().crossfadeDuration || 0;
           if (crossfadeMs > 0 && s.duration_ms > 0) {
-            const threshold = s.duration_ms - crossfadeMs;
+            // Small buffer to compensate for IPC latency between frontend trigger
+            // and backend receiving the play command
+            const IPC_BUFFER_MS = 100;
+            const threshold = s.duration_ms - crossfadeMs - IPC_BUFFER_MS;
 
             // Check if we reached the transition point
             // Also ensure we aren't already transitioning
