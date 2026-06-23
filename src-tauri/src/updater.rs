@@ -1,3 +1,4 @@
+use log::error;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Runtime, State};
 use tauri_plugin_updater::{Update, UpdaterExt};
@@ -77,14 +78,30 @@ pub async fn check_update<R: Runtime>(
             };
             
             // Store the update for later download
-            *pending_update.update.lock().expect("updater mutex poisoned") = Some(update);
-            *pending_update.bytes.lock().expect("updater mutex poisoned") = None;
+            match pending_update.update.lock() {
+                Ok(mut g) => *g = Some(update),
+                Err(e) => {
+                    error!("Updater update lock poisoned: {}", e);
+                    return Err("Internal error: update lock poisoned".to_string());
+                }
+            }
+            match pending_update.bytes.lock() {
+                Ok(mut g) => *g = None,
+                Err(e) => {
+                    error!("Updater bytes lock poisoned: {}", e);
+                    return Err("Internal error: bytes lock poisoned".to_string());
+                }
+            }
 
             Ok(Some(metadata))
         }
         Ok(None) => {
-            *pending_update.update.lock().expect("updater mutex poisoned") = None;
-            *pending_update.bytes.lock().expect("updater mutex poisoned") = None;
+            if let Ok(mut g) = pending_update.update.lock() {
+                *g = None;
+            }
+            if let Ok(mut g) = pending_update.bytes.lock() {
+                *g = None;
+            }
             Ok(None)
         }
         Err(e) => Err(e.to_string()),
@@ -142,7 +159,8 @@ pub async fn download_update<R: Runtime>(
     pending_update: State<'_, PendingUpdate>,
 ) -> Result<(), String> {
     let update = {
-        let guard = pending_update.update.lock().expect("updater mutex poisoned");
+        let guard = pending_update.update.lock()
+            .map_err(|e| format!("Updater update lock poisoned: {}", e))?;
         guard.clone()
     };
     
@@ -168,7 +186,13 @@ pub async fn download_update<R: Runtime>(
     ).await.map_err(|e| e.to_string())?;
     
     // Store the bytes for later installation
-    *pending_update.bytes.lock().expect("updater mutex poisoned") = Some(bytes);
+    match pending_update.bytes.lock() {
+        Ok(mut g) => *g = Some(bytes),
+        Err(e) => {
+            error!("Updater bytes lock poisoned: {}", e);
+            return Err("Internal error: bytes lock poisoned".to_string());
+        }
+    }
     
     // Emit download complete event
     let _ = app.emit("update-download-complete", ());
@@ -181,8 +205,12 @@ pub async fn download_update<R: Runtime>(
 pub fn install_update(
     pending_update: State<'_, PendingUpdate>,
 ) -> Result<(), String> {
-    let update = pending_update.update.lock().expect("updater mutex poisoned").take();
-    let bytes = pending_update.bytes.lock().expect("updater mutex poisoned").take();
+    let update = pending_update.update.lock()
+        .map_err(|e| format!("Updater update lock poisoned: {}", e))?
+        .take();
+    let bytes = pending_update.bytes.lock()
+        .map_err(|e| format!("Updater bytes lock poisoned: {}", e))?
+        .take();
     
     let Some(update) = update else {
         return Err("No pending update to install".to_string());

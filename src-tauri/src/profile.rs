@@ -13,18 +13,19 @@ pub struct DbCache(pub Mutex<HashMap<Option<String>, crate::database::DbHelper>>
 
 /// Sets the active profile ID in the application state.
 #[tauri::command]
-pub fn set_active_profile(app: AppHandle, profile_id: Option<String>) {
+pub fn set_active_profile(app: AppHandle, profile_id: Option<String>) -> Result<(), String> {
     info!("Setting active profile to: {:?}", profile_id);
     let state = app.state::<ProfileState>();
-    let mut current = state.0.lock().expect("profile mutex poisoned");
+    let mut current = state.0.lock().map_err(|e| format!("Profile state lock poisoned: {}", e))?;
     *current = profile_id;
+    Ok(())
 }
 
 pub fn get_library_db_path(app: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let mut db_name = "library.db".to_string();
     if let Some(state) = app.try_state::<ProfileState>() {
-        let current = state.0.lock().expect("profile mutex poisoned");
+        let current = state.0.lock().map_err(|e| format!("Profile state lock poisoned: {}", e))?;
         if let Some(id) = &*current {
             db_name = format!("library_{}.db", id);
         }
@@ -38,15 +39,21 @@ pub fn with_db<F, T>(app: &AppHandle, f: F) -> Result<T, String>
 where
     F: FnOnce(&crate::database::DbHelper) -> Result<T, rusqlite::Error>,
 {
-    let profile_id = app.state::<ProfileState>().0.lock().unwrap().clone();
+    let profile_id = app.state::<ProfileState>().0.lock()
+        .map_err(|e| format!("Profile state lock poisoned: {}", e))?
+        .clone();
     let db_path = get_library_db_path(app)?;
 
     let cache = app.state::<DbCache>();
-    let mut cache = cache.0.lock().unwrap();
-    let db = cache.entry(profile_id).or_insert_with(|| {
-        crate::database::DbHelper::new(&db_path)
-            .expect("Failed to open database connection")
-    });
+    let mut cache = cache.0.lock()
+        .map_err(|e| format!("DbCache lock poisoned: {}", e))?;
+    if !cache.contains_key(&profile_id) {
+        let db = crate::database::DbHelper::new(&db_path)
+            .map_err(|e| format!("Failed to open database connection: {}", e))?;
+        cache.insert(profile_id.clone(), db);
+    }
+    let db = cache.get(&profile_id)
+        .ok_or("Database not found in cache after insert")?;
 
     f(db).map_err(|e| format!("Database operation failed: {}", e))
 }
@@ -55,15 +62,21 @@ pub fn with_db_mut<F, T>(app: &AppHandle, f: F) -> Result<T, String>
 where
     F: FnOnce(&mut crate::database::DbHelper) -> Result<T, rusqlite::Error>,
 {
-    let profile_id = app.state::<ProfileState>().0.lock().unwrap().clone();
+    let profile_id = app.state::<ProfileState>().0.lock()
+        .map_err(|e| format!("Profile state lock poisoned: {}", e))?
+        .clone();
     let db_path = get_library_db_path(app)?;
 
     let cache = app.state::<DbCache>();
-    let mut cache = cache.0.lock().unwrap();
-    let db = cache.entry(profile_id).or_insert_with(|| {
-        crate::database::DbHelper::new(&db_path)
-            .expect("Failed to open database connection")
-    });
+    let mut cache = cache.0.lock()
+        .map_err(|e| format!("DbCache lock poisoned: {}", e))?;
+    if !cache.contains_key(&profile_id) {
+        let db = crate::database::DbHelper::new(&db_path)
+            .map_err(|e| format!("Failed to open database connection: {}", e))?;
+        cache.insert(profile_id.clone(), db);
+    }
+    let db = cache.get_mut(&profile_id)
+        .ok_or("Database not found in cache after insert")?;
 
     f(db).map_err(|e| format!("Database operation failed: {}", e))
 }

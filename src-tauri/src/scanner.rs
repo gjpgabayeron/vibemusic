@@ -123,7 +123,9 @@ fn extract_features_from_title(title: &str) -> (String, Vec<String>) {
         if let Some(feat_part) = caps.get(1) {
             let features = parse_artists(Some(feat_part.as_str()));
             // Remove the match from title
-            let range = caps.get(0).unwrap().range();
+            let range = caps.get(0)
+                .map(|m| m.range())
+                .unwrap_or(0..title.len());
             let mut new_title = title.to_string();
             new_title.replace_range(range, "");
             return (new_title.trim().to_string(), features);
