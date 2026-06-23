@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { Track } from "@/lib/api";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -6,7 +6,6 @@ import { GripVertical, Play, Pause } from "lucide-react";
 import { formatDuration } from "@/lib/format";
 import { ScrollingText } from "@/components/shared/scrolling-text";
 import { ArtistLinks } from "@/components/shared/artist-links";
-import { cn } from "@/lib/utils";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -28,27 +27,6 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
   const queue = useAudioStore((s) => s.queue);
   const status = usePlayerStatus();
   const artistContainerRef = useRef<HTMLDivElement>(null);
-  const artistContentRef = useRef<HTMLDivElement>(null);
-  const [artistOverflows, setArtistOverflows] = useState(false);
-
-  useEffect(() => {
-    const check = () => {
-      if (artistContainerRef.current && artistContentRef.current) {
-        setArtistOverflows(
-          artistContentRef.current.scrollWidth >
-            artistContainerRef.current.clientWidth,
-        );
-      }
-    };
-    check();
-    const observer = new ResizeObserver(check);
-    if (artistContainerRef.current) {
-      observer.observe(artistContainerRef.current);
-    }
-    return () => observer.disconnect();
-  }, [track.artist_names, track.artist]);
-
-  const artistText = track.artist_names.join(", ") || track.artist || "";
 
   const {
     attributes,
@@ -132,40 +110,14 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
               ref={artistContainerRef}
               className="relative overflow-hidden whitespace-nowrap text-xs text-muted-foreground w-full"
             >
-              <div
-                ref={artistContentRef}
-                className={cn(
-                  "inline-block transition-transform will-change-transform",
-                  artistOverflows &&
-                    "motion-safe:hover:animate-scroll-text motion-safe:group-hover:animate-scroll-text",
-                )}
-                style={
-                  artistOverflows
-                    ? {
-                        animationDuration: `${Math.min(artistText.length * 150, 10000)}ms`,
-                      }
-                    : undefined
-                }
-              >
-                <span className="inline-block pr-8">
-                  <ArtistLinks
-                    names={track.artist_names}
-                    ids={track.artist_ids}
-                    fallbackName={track.artist}
-                    fallbackId={track.artist_id}
-                  />
-                </span>
-                {artistOverflows && (
-                  <span aria-hidden="true" className="inline-block pr-8">
-                    <ArtistLinks
-                      names={track.artist_names}
-                      ids={track.artist_ids}
-                      fallbackName={track.artist}
-                      fallbackId={track.artist_id}
-                    />
-                  </span>
-                )}
-              </div>
+              <span className="inline-block pr-8">
+                <ArtistLinks
+                  names={track.artist_names}
+                  ids={track.artist_ids}
+                  fallbackName={track.artist}
+                  fallbackId={track.artist_id}
+                />
+              </span>
             </div>
           </div>
           <div className="text-xs text-muted-foreground font-mono shrink-0">
