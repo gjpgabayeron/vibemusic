@@ -914,11 +914,13 @@ impl AudioWorker {
     }
 
     fn handle_device_change(&mut self) {
+        info!("Audio device changed, reconfiguring stream");
         self.device_error.store(false, Ordering::Relaxed);
         if self.current_file_path.is_some() {
             self._current_stream = None;
             self.producer = None;
             self.recreate_cpal_stream(self.device_sample_rate, self.device_channels);
+            self.app_handle.emit("audio-device-recovered", ()).ok();
         }
     }
 
