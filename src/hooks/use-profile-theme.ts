@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useProfileStore } from "@/stores/profile-store";
 import { useSettingsStore } from "@/stores/settings-store";
-import { hexToHsl } from "@/lib/color-utils";
+import { hexToHsl, hslToRgb, relativeLuminance, contrastRatio } from "@/lib/color-utils";
 import { logger } from "@/lib/logger";
 
 const THEME_VARS = [
@@ -53,36 +53,64 @@ export function useProfileTheme() {
       return;
     }
 
-    const [h] = hexToHsl(color);
+    const [h, _s, originalL] = hexToHsl(color);
     if (typeof h !== "number" || isNaN(h)) {
       logger.warn("[theme] Invalid hue from profile color:", color);
       reset();
       return;
     }
 
+    function hslToHex(hue: number, sat: number, light: number): string {
+      const [r, g, b] = hslToRgb(hue, sat, light);
+      return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+    }
+
+    function ensureContrast(
+      hue: number,
+      sat: number,
+      lightness: number,
+      minRatio: number,
+    ): number {
+      let l = lightness;
+      while (l > 5) {
+        const hex = hslToHex(hue, sat, l);
+        const lum = relativeLuminance(hex);
+        if (contrastRatio(1.0, lum) >= minRatio) break;
+        l -= 1;
+      }
+      return l;
+    }
+
     const isDark = resolvedTheme === "dark";
 
-    const vars: Record<string, string> = isDark
-      ? {
-          "primary": hsl(h, 50, 65),
-          "primary-foreground": hsl(0, 0, 10),
-          "accent": hsl(h, 20, 20),
-          "accent-foreground": hsl(h, 40, 80),
-          "ring": hsl(h, 40, 55),
-          "sidebar-primary": hsl(h, 55, 55),
-          "sidebar-primary-foreground": hsl(0, 0, 10),
-          "sidebar-ring": hsl(h, 35, 50),
-        }
-      : {
-          "primary": hsl(h, 55, 45),
-          "primary-foreground": hsl(0, 0, 100),
-          "accent": hsl(h, 35, 94),
-          "accent-foreground": hsl(h, 50, 30),
-          "ring": hsl(h, 50, 55),
-          "sidebar-primary": hsl(h, 50, 30),
-          "sidebar-primary-foreground": hsl(0, 0, 100),
-          "sidebar-ring": hsl(h, 45, 50),
-        };
+    let vars: Record<string, string>;
+
+    if (isDark) {
+      vars = {
+        "primary": hsl(h, 50, 65),
+        "primary-foreground": hsl(0, 0, 10),
+        "accent": hsl(h, 20, 20),
+        "accent-foreground": hsl(h, 40, 80),
+        "ring": hsl(h, 40, 55),
+        "sidebar-primary": hsl(h, 55, 55),
+        "sidebar-primary-foreground": hsl(0, 0, 10),
+        "sidebar-ring": hsl(h, 35, 50),
+      };
+    } else {
+      const SAT = 70;
+      const l = ensureContrast(h, SAT, Math.max(originalL * 0.5, 5), 4.5);
+      const DAL = Math.max(l - 60, 5);
+      vars = {
+        "primary": hsl(h, SAT, l),
+        "primary-foreground": hsl(0, 0, 100),
+        "accent": hsl(h, 30, 92),
+        "accent-foreground": hsl(h, 55, DAL),
+        "ring": hsl(h, 55, Math.max(l - 10, 10)),
+        "sidebar-primary": hsl(h, 60, Math.max(l - 15, 10)),
+        "sidebar-primary-foreground": hsl(0, 0, 100),
+        "sidebar-ring": hsl(h, 50, Math.max(l - 12, 10)),
+      };
+    }
 
     const targets = [root, ...document.querySelectorAll<HTMLElement>(".dark")];
 

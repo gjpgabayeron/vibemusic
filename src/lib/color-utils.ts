@@ -24,7 +24,31 @@ function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   return [h * 360, s * 100, l * 100];
 }
 
-function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+/**
+ * Compute WCAG relative luminance from a hex color.
+ * Returns a value between 0 (black) and 1 (white).
+ */
+export function relativeLuminance(hex: string): number {
+  hex = hex.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+  const linearize = (c: number) =>
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  return 0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b);
+}
+
+/**
+ * WCAG contrast ratio between two luminance values.
+ * AA normal text requires >= 4.5.
+ */
+export function contrastRatio(l1: number, l2: number): number {
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+export function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   h /= 360; s /= 100; l /= 100;
   if (s === 0) return [Math.round(l * 255), Math.round(l * 255), Math.round(l * 255)];
   const hue2rgb = (p: number, q: number, t: number) => {
