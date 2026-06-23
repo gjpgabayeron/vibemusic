@@ -119,8 +119,11 @@ export default function MusicControler() {
               height={96}
               decoding="async"
             />
-            <div className="flex flex-col min-w-0 w-full pr-4">
-              <ScrollingText className="text-primary text-base font-bold w-full">
+            <div className="flex flex-col min-w-0 w-full">
+              <ScrollingText
+                className="text-foreground text-base font-bold w-full"
+                trigger="always"
+              >
                 {currentTrack.title}
               </ScrollingText>
               <div className="text-muted-foreground text-xs font-normal line-clamp-1">
@@ -176,8 +179,20 @@ export default function MusicControler() {
         </div>
       </div>
       <div id="actions" className="flex items-center gap-2 justify-end">
-        <VolumeControl volume={volume} onVolumeChange={handleVolume} onToggleMute={toggleMute} />
-        <SidePanelActions sidePanel={sidePanel} onToggleQueue={toggleQueue} onSetSidePanel={setSidePanel} onToggleMiniPlayer={() => { logger.debug("Toggle Mini Player Clicked"); toggleMiniPlayer(); }} />
+        <VolumeControl
+          volume={volume}
+          onVolumeChange={handleVolume}
+          onToggleMute={toggleMute}
+        />
+        <SidePanelActions
+          sidePanel={sidePanel}
+          onToggleQueue={toggleQueue}
+          onSetSidePanel={setSidePanel}
+          onToggleMiniPlayer={() => {
+            logger.debug("Toggle Mini Player Clicked");
+            toggleMiniPlayer();
+          }}
+        />
       </div>
     </div>
   );
