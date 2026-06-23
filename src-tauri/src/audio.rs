@@ -79,7 +79,7 @@ enum AudioCommand {
 pub struct AudioEngine {
     command_tx: Sender<AudioCommand>,
     state: Arc<Mutex<PlaybackState>>,
-    media_controls: Arc<Mutex<MediaControls>>,
+    media_controls: Arc<Mutex<Option<souvlaki::MediaControls>>>,
 }
 
 impl AudioEngine {
@@ -94,7 +94,7 @@ impl AudioEngine {
                 .get_webview_window("main")
                 .expect("Main window not found");
 
-            match window.window_handle().unwrap().as_raw() {
+            match window.window_handle().expect("Window handle unavailable").as_raw() {
                 RawWindowHandle::Win32(handle) => Some(handle.hwnd.get() as *mut std::ffi::c_void),
                 _ => None,
             }
@@ -109,12 +109,20 @@ impl AudioEngine {
             hwnd,
         };
 
-        let mut controls = MediaControls::new(config).expect("Failed to initialize media controls");
-        controls.set_playback(MediaPlayback::Stopped).ok();
+        let controls = match MediaControls::new(config) {
+            Ok(mut c) => {
+                c.set_playback(MediaPlayback::Stopped).ok();
+                Some(c)
+            }
+            Err(e) => {
+                warn!("Failed to initialize media controls (OS media keys disabled): {}", e);
+                None
+            }
+        };
+        let controls = Arc::new(Mutex::new(controls));
 
         let (tx, rx) = mpsc::channel();
         let state = Arc::new(Mutex::new(PlaybackState::default()));
-        let controls = Arc::new(Mutex::new(controls));
 
         let state_clone = state.clone();
         let controls_clone = controls.clone();
@@ -134,52 +142,63 @@ impl AudioEngine {
 
     pub fn init_media_events(&self, handle: AppHandle) {
         let controls = self.media_controls.clone();
-        let mut controls_guard = controls.lock().unwrap();
+        let mut guard = match controls.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                error!("Media controls mutex poisoned in init_media_events, recovering");
+                poisoned.into_inner()
+            }
+        };
+
+        let Some(ref mut controls_guard) = *guard else {
+            info!("Media controls not available, skipping OS media key registration");
+            return;
+        };
 
         controls_guard
             .attach(move |event| match event {
                 souvlaki::MediaControlEvent::Play => {
-                    handle.emit("media-play", ()).unwrap();
+                    let _ = handle.emit("media-play", ());
                 }
                 souvlaki::MediaControlEvent::Pause => {
-                    handle.emit("media-pause", ()).unwrap();
+                    let _ = handle.emit("media-pause", ());
                 }
                 souvlaki::MediaControlEvent::Toggle => {
-                    handle.emit("media-toggle", ()).unwrap();
+                    let _ = handle.emit("media-toggle", ());
                 }
                 souvlaki::MediaControlEvent::Next => {
-                    handle.emit("media-next", ()).unwrap();
+                    let _ = handle.emit("media-next", ());
                 }
                 souvlaki::MediaControlEvent::Previous => {
-                    handle.emit("media-prev", ()).unwrap();
+                    let _ = handle.emit("media-prev", ());
                 }
                 souvlaki::MediaControlEvent::Stop => {
-                    handle.emit("media-stop", ()).unwrap();
+                    let _ = handle.emit("media-stop", ());
                 }
                 souvlaki::MediaControlEvent::Seek(dir) => {
                     let dir_str = match dir {
                         SeekDirection::Forward => "forward",
                         SeekDirection::Backward => "backward",
                     };
-                    handle.emit("media-seek", serde_json::json!({"direction": dir_str})).unwrap();
+                    let _ = handle.emit("media-seek", serde_json::json!({"direction": dir_str}));
                 }
                 souvlaki::MediaControlEvent::SeekBy(dir, dur) => {
                     let dir_str = match dir {
                         SeekDirection::Forward => "forward",
                         SeekDirection::Backward => "backward",
                     };
-                    handle.emit("media-seek-by", serde_json::json!({
+                    let _ = handle.emit("media-seek-by", serde_json::json!({
                         "direction": dir_str,
                         "duration_ms": dur.as_millis() as u64,
-                    })).unwrap();
+                    }));
                 }
                 souvlaki::MediaControlEvent::SetPosition(pos) => {
-                    handle.emit("media-set-position", serde_json::json!({
+                    let _ = handle.emit("media-set-position", serde_json::json!({
                         "position_ms": pos.0.as_millis() as u64,
-                    })).unwrap();
+                    }));
                 }
                 souvlaki::MediaControlEvent::SetVolume(vol) => {
-                    handle.emit("media-set-volume", serde_json::json!({"volume": vol})).unwrap();
+                    let _ = handle.emit("media-set-volume", serde_json::json!({"volume": vol}));
                 }
                 souvlaki::MediaControlEvent::Raise => {
                     if let Some(window) = handle.get_webview_window("main") {
@@ -188,7 +207,7 @@ impl AudioEngine {
                     }
                 }
                 souvlaki::MediaControlEvent::Quit => {
-                    handle.emit("media-quit", ()).unwrap();
+                    let _ = handle.emit("media-quit", ());
                 }
                 _ => {}
             })
@@ -247,7 +266,13 @@ impl AudioEngine {
     }
 
     pub fn get_state(&self) -> PlaybackState {
-        self.state.lock().unwrap().clone()
+        match self.state.lock() {
+            Ok(guard) => guard.clone(),
+            Err(poisoned) => {
+                error!("Audio state mutex poisoned in get_state, recovering");
+                poisoned.into_inner().clone()
+            }
+        }
     }
 }
 
@@ -366,7 +391,7 @@ impl SymphoniaDecoder {
 struct AudioWorker {
     receiver: Receiver<AudioCommand>,
     state: Arc<Mutex<PlaybackState>>,
-    media_controls: Arc<Mutex<MediaControls>>,
+    media_controls: Arc<Mutex<Option<souvlaki::MediaControls>>>,
     app_handle: AppHandle,
 
     // Playback resources
@@ -408,7 +433,7 @@ impl AudioWorker {
     fn new(
         receiver: Receiver<AudioCommand>,
         state: Arc<Mutex<PlaybackState>>,
-        media_controls: Arc<Mutex<MediaControls>>,
+        media_controls: Arc<Mutex<Option<souvlaki::MediaControls>>>,
         app_handle: AppHandle,
     ) -> Self {
         let host = cpal::default_host();
@@ -487,7 +512,11 @@ impl AudioWorker {
             AudioCommand::SetVolume(vol) => {
                 self.volume
                     .store(f32::to_bits(vol) as u64, Ordering::Relaxed);
-                self.state.lock().unwrap().volume = vol;
+                if let Ok(mut s) = self.state.lock() {
+                    s.volume = vol;
+                } else {
+                    warn!("Audio state mutex poisoned in set_volume, skipping");
+                }
             }
             AudioCommand::SetDevice(name) => {
                 self.selected_device_name = Some(name);
@@ -526,10 +555,20 @@ impl AudioWorker {
                     self.recreate_cpal_stream(self.device_sample_rate, self.device_channels);
 
                     {
-                        let mut s = self.state.lock().unwrap();
-                        s.current_file = Some(path.to_string());
-                        s.duration_ms = self.duration_ms;
-                        s.position_ms = 0;
+                        match self.state.lock() {
+                            Ok(mut s) => {
+                                s.current_file = Some(path.to_string());
+                                s.duration_ms = self.duration_ms;
+                                s.position_ms = 0;
+                            }
+                            Err(poisoned) => {
+                                error!("Audio state mutex poisoned in handle_play_request, recovering");
+                                let mut s = poisoned.into_inner();
+                                s.current_file = Some(path.to_string());
+                                s.duration_ms = self.duration_ms;
+                                s.position_ms = 0;
+                            }
+                        }
                     }
 
                     self.update_media_metadata(title, artist, album, artwork_path, self.duration_ms);
@@ -571,12 +610,24 @@ impl AudioWorker {
         self.samples_played = 0;
 
         {
-            let mut s = self.state.lock().unwrap();
-            s.is_playing = true;
-            s.is_paused = false;
-            s.current_file = Some(path.to_string());
-            s.duration_ms = self.duration_ms;
-            s.position_ms = 0;
+            match self.state.lock() {
+                Ok(mut s) => {
+                    s.is_playing = true;
+                    s.is_paused = false;
+                    s.current_file = Some(path.to_string());
+                    s.duration_ms = self.duration_ms;
+                    s.position_ms = 0;
+                }
+                Err(poisoned) => {
+                    error!("Audio state mutex poisoned in play_file_hard_cut, recovering");
+                    let mut s = poisoned.into_inner();
+                    s.is_playing = true;
+                    s.is_paused = false;
+                    s.current_file = Some(path.to_string());
+                    s.duration_ms = self.duration_ms;
+                    s.position_ms = 0;
+                }
+            }
         }
 
         self.update_media_metadata(title, artist, album, artwork_path, self.duration_ms);
@@ -584,22 +635,24 @@ impl AudioWorker {
         self.emit_state();
     }
 
-    fn update_media_metadata(&self, title: &str, artist: &str, album: &str, artwork_path: Option<&str>, duration_ms: u64) {
-        if let Ok(mut c) = self.media_controls.lock() {
-            // cover_url skipped: souvlaki's Windows backend has a bug with file:// URIs (HRESULT 0x800700A1)
-            if let Err(e) = c.set_metadata(MediaMetadata {
-                title: Some(title),
-                artist: Some(artist),
-                album: Some(album),
-                duration: Some(Duration::from_millis(duration_ms)),
-                cover_url: None,
-            }) {
-                error!("set_metadata failed: {:?}", e);
-            }
-            if let Err(e) = c.set_playback(MediaPlayback::Playing {
-                progress: Some(MediaPosition(Duration::ZERO)),
-            }) {
-                error!("set_playback failed: {:?}", e);
+    fn update_media_metadata(&self, title: &str, artist: &str, album: &str, _artwork_path: Option<&str>, duration_ms: u64) {
+        if let Ok(mut guard) = self.media_controls.lock() {
+            if let Some(ref mut c) = *guard {
+                // cover_url skipped: souvlaki's Windows backend has a bug with file:// URIs (HRESULT 0x800700A1)
+                if let Err(e) = c.set_metadata(MediaMetadata {
+                    title: Some(title),
+                    artist: Some(artist),
+                    album: Some(album),
+                    duration: Some(Duration::from_millis(duration_ms)),
+                    cover_url: None,
+                }) {
+                    error!("set_metadata failed: {:?}", e);
+                }
+                if let Err(e) = c.set_playback(MediaPlayback::Playing {
+                    progress: Some(MediaPosition(Duration::ZERO)),
+                }) {
+                    error!("set_playback failed: {:?}", e);
+                }
             }
         }
     }
@@ -877,9 +930,18 @@ impl AudioWorker {
         info!("Playback paused");
         self.is_playing.store(false, Ordering::Relaxed);
         {
-            let mut s = self.state.lock().unwrap();
-            s.is_paused = true;
-            s.is_playing = false;
+            match self.state.lock() {
+                Ok(mut s) => {
+                    s.is_paused = true;
+                    s.is_playing = false;
+                }
+                Err(poisoned) => {
+                    error!("Audio state mutex poisoned in pause, recovering");
+                    let mut s = poisoned.into_inner();
+                    s.is_paused = true;
+                    s.is_playing = false;
+                }
+            }
         }
         self.update_media_controls();
         self.emit_state();
@@ -889,9 +951,18 @@ impl AudioWorker {
         info!("Playback resumed");
         self.is_playing.store(true, Ordering::Relaxed);
         {
-            let mut s = self.state.lock().unwrap();
-            s.is_paused = false;
-            s.is_playing = true;
+            match self.state.lock() {
+                Ok(mut s) => {
+                    s.is_paused = false;
+                    s.is_playing = true;
+                }
+                Err(poisoned) => {
+                    error!("Audio state mutex poisoned in resume, recovering");
+                    let mut s = poisoned.into_inner();
+                    s.is_paused = false;
+                    s.is_playing = true;
+                }
+            }
         }
         self.update_media_controls();
         self.emit_state();
@@ -913,15 +984,28 @@ impl AudioWorker {
         self.crossfade_state = CrossfadeState::None;
 
         {
-            let mut s = self.state.lock().unwrap();
-            s.is_playing = false;
-            s.is_paused = false;
-            s.position_ms = 0;
-            s.current_file = None;
+            match self.state.lock() {
+                Ok(mut s) => {
+                    s.is_playing = false;
+                    s.is_paused = false;
+                    s.position_ms = 0;
+                    s.current_file = None;
+                }
+                Err(poisoned) => {
+                    error!("Audio state mutex poisoned in stop, recovering");
+                    let mut s = poisoned.into_inner();
+                    s.is_playing = false;
+                    s.is_paused = false;
+                    s.position_ms = 0;
+                    s.current_file = None;
+                }
+            }
         }
 
-        if let Ok(mut c) = self.media_controls.lock() {
-            c.set_playback(MediaPlayback::Stopped).ok();
+        if let Ok(mut guard) = self.media_controls.lock() {
+            if let Some(ref mut c) = *guard {
+                c.set_playback(MediaPlayback::Stopped).ok();
+            }
         }
 
         self.emit_state();
@@ -940,8 +1024,13 @@ impl AudioWorker {
                     pos_ms * (self.device_sample_rate as u64 * self.device_channels as u64) / 1000;
 
                 {
-                    let mut s = self.state.lock().unwrap();
-                    s.position_ms = pos_ms;
+                    match self.state.lock() {
+                        Ok(mut s) => s.position_ms = pos_ms,
+                        Err(poisoned) => {
+                            error!("Audio state mutex poisoned in seek, recovering");
+                            poisoned.into_inner().position_ms = pos_ms;
+                        }
+                    }
                 }
                 self.update_media_controls();
             } else {
@@ -952,10 +1041,16 @@ impl AudioWorker {
 
     fn emit_progress(&mut self) {
         let should_update = {
-            let mut s = self.state.lock().unwrap();
-            if s.is_playing && !s.is_paused {
-                s.position_ms = self.current_position_ms;
-                self.app_handle.emit(EVENT_PLAYBACK_PROGRESS, &*s).ok();
+            let mut guard = match self.state.lock() {
+                Ok(g) => g,
+                Err(poisoned) => {
+                    error!("Audio state mutex poisoned in emit_progress, recovering");
+                    poisoned.into_inner()
+                }
+            };
+            if guard.is_playing && !guard.is_paused {
+                guard.position_ms = self.current_position_ms;
+                self.app_handle.emit(EVENT_PLAYBACK_PROGRESS, &*guard).ok();
                 self.last_media_pos_update.elapsed() >= Duration::from_secs(5)
             } else {
                 false
@@ -969,20 +1064,33 @@ impl AudioWorker {
     }
 
     fn emit_state(&self) {
-        let s = self.state.lock().unwrap();
-        self.app_handle.emit(EVENT_PLAYBACK_STATE, &*s).ok();
+        let guard = match self.state.lock() {
+            Ok(g) => g,
+            Err(poisoned) => {
+                error!("Audio state mutex poisoned in emit_state, recovering");
+                poisoned.into_inner()
+            }
+        };
+        self.app_handle.emit(EVENT_PLAYBACK_STATE, &*guard).ok();
     }
 
     fn update_media_controls(&self) {
-        if let Ok(mut c) = self.media_controls.lock() {
-            let s = self.state.lock().unwrap();
-            let pos = MediaPosition(Duration::from_millis(s.position_ms));
-            if s.is_paused {
+        if let Ok(mut guard) = self.media_controls.lock() {
+            let Some(ref mut c) = *guard else { return };
+            let state_guard = match self.state.lock() {
+                Ok(g) => g,
+                Err(poisoned) => {
+                    error!("Audio state mutex poisoned in update_media_controls, recovering");
+                    poisoned.into_inner()
+                }
+            };
+            let pos = MediaPosition(Duration::from_millis(state_guard.position_ms));
+            if state_guard.is_paused {
                 c.set_playback(MediaPlayback::Paused {
                     progress: Some(pos),
                 })
                 .ok();
-            } else if s.is_playing {
+            } else if state_guard.is_playing {
                 c.set_playback(MediaPlayback::Playing {
                     progress: Some(pos),
                 })
