@@ -3,11 +3,14 @@ use thiserror::Error;
 
 /// Application-wide error type.
 #[derive(Error, Debug)]
+#[allow(dead_code)]
 pub enum AppError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Audio error: {0}")]
     Audio(String),
+    #[error("Internal error: {0}")]
+    Internal(String),
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
@@ -57,7 +60,13 @@ mod tests {
     #[test]
     fn test_app_error_serializes_to_string() {
         let err = AppError::Audio("no output".to_string());
-        let serialized = serde_json::to_string(&err).unwrap();
+        let serialized = serde_json::to_string(&err).unwrap_or_default();
         assert_eq!(serialized, "\"Audio error: no output\"");
+    }
+
+    #[test]
+    fn test_app_error_internal_display() {
+        let err = AppError::Internal("lock poisoned".to_string());
+        assert_eq!(err.to_string(), "Internal error: lock poisoned");
     }
 }
