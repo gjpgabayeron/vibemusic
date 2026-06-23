@@ -18,7 +18,7 @@ export function VolumeControl({ volume, onVolumeChange, onToggleMute }: VolumeCo
     <div className="flex items-center gap-2 w-36">
       <Tooltip delayDuration={1000}>
         <TooltipTrigger asChild>
-          <Button variant="ghost" onClick={onToggleMute}>
+          <Button variant="ghost" onClick={onToggleMute} aria-label={volume === 0 ? "Unmute" : "Mute"}>
             {volume === 0 ? (
               <VolumeX size={20} className="text-muted-foreground" />
             ) : volume < 0.5 ? (

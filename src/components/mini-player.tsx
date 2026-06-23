@@ -115,13 +115,14 @@ function MiniPlayerControls({
         size="icon"
         onClick={toggleShuffle}
         className={shuffle ? "text-primary" : "text-muted-foreground"}
+        aria-label={shuffle ? "Shuffle on" : "Shuffle off"}
       >
         <Shuffle size={size === "small" ? 16 : 20} />
       </Button>
-      <Button variant="ghost" size="icon" onClick={() => previous()}>
+      <Button variant="ghost" size="icon" onClick={() => previous()} aria-label="Previous track">
         <SkipBack size={size === "small" ? 16 : 20} />
       </Button>
-      <Button variant="ghost" size="icon" onClick={handlePlayPause}>
+      <Button variant="ghost" size="icon" onClick={handlePlayPause} aria-label={isPlaying ? "Pause" : "Play"}>
         {isPlaying ? (
           <Pause
             size={size === "small" ? 20 : 24}
@@ -134,7 +135,7 @@ function MiniPlayerControls({
           />
         )}
       </Button>
-      <Button variant="ghost" size="icon" onClick={() => next()}>
+      <Button variant="ghost" size="icon" onClick={() => next()} aria-label="Next track">
         <SkipForward size={size === "small" ? 16 : 20} />
       </Button>
       <Button
@@ -142,6 +143,7 @@ function MiniPlayerControls({
         size="icon"
         onClick={toggleRepeat}
         className={repeat !== "off" ? "text-primary" : "text-muted-foreground"}
+        aria-label={repeat === "off" ? "Repeat off" : repeat === "all" ? "Repeat all" : "Repeat one"}
       >
         {repeat === "one" ? (
           <Repeat1 size={size === "small" ? 16 : 20} />
@@ -157,6 +159,7 @@ function MiniPlayerControls({
             size="icon"
             onClick={toggleMute}
             className="text-muted-foreground hover:text-foreground"
+            aria-label={volume === 0 ? "Unmute" : "Mute"}
           >
             {volume === 0 ? (
               <VolumeX size={size === "small" ? 16 : 20} />
@@ -178,7 +181,7 @@ function MiniPlayerControls({
       )}
 
       {showMaximize && (
-        <Button variant="ghost" size="icon" onClick={maximizeMiniPlayer}>
+        <Button variant="ghost" size="icon" onClick={maximizeMiniPlayer} aria-label="Maximize player">
           <Maximize2
             size={size === "small" ? 16 : 20}
             className="text-muted-foreground hover:text-foreground"
@@ -284,6 +287,7 @@ export default function MiniPlayer() {
               size="icon"
               className="h-7 w-7"
               onClick={handlePlayPause}
+              aria-label={isPlaying ? "Pause" : "Play"}
             >
               {isPlaying ? (
                 <Pause size={16} className="fill-foreground" />
@@ -296,6 +300,7 @@ export default function MiniPlayer() {
               size="icon"
               className="h-7 w-7"
               onClick={maximizeMiniPlayer}
+              aria-label="Maximize player"
             >
               <Maximize2
                 size={14}
@@ -321,6 +326,7 @@ export default function MiniPlayer() {
           size="icon"
           className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={maximizeMiniPlayer}
+          aria-label="Maximize player"
         >
           <Maximize2 size={18} />
         </Button>
@@ -398,6 +404,7 @@ export default function MiniPlayer() {
           size="icon"
           className="shrink-0 text-muted-foreground hover:text-foreground"
           onClick={maximizeMiniPlayer}
+          aria-label="Maximize player"
         >
           <Maximize2 size={20} />
         </Button>
