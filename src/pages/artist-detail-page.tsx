@@ -17,8 +17,10 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  Music,
 } from "lucide-react";
 import { CardItem } from "@/components/shared/card-item";
+import { EmptyState } from "@/components/shared/empty-state";
 import { useAudioStore, useCurrentTrack, usePlayerStatus } from "@/stores/audio-store";
 import { Button } from "@/components/ui/button";
 import artistPlaceholderArt from "@/assets/artist-placeholder-art.png";
@@ -28,6 +30,7 @@ import { ArtistLinks } from "@/components/shared/artist-links";
 import { VirtualizedList } from "@/components/shared/virtualized-list";
 import { TrackListHeader } from "@/components/shared/track-list-header";
 import { PageLayout } from "@/components/shared/page-layout";
+import { DetailSkeleton } from "@/components/skeletons";
 
 export default function ArtistDetailPage() {
   const detailView = useDetailView();
@@ -80,9 +83,10 @@ export default function ArtistDetailPage() {
   }, [detailView]);
 
   if (isLoading || !artist) {
+    if (isLoading) return <DetailSkeleton />;
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
-        Loading...
+        Artist not found
       </div>
     );
   }
@@ -276,6 +280,18 @@ export default function ArtistDetailPage() {
                   Songs
                 </h2>
                 <TrackListHeader />
+              </div>
+            )}
+
+            {/* Empty State */}
+            {albums.length === 0 && tracks.length === 0 && (
+              <div className="py-16">
+                <EmptyState
+                  icon={Music}
+                  title="No content found"
+                  description="This artist has no albums or tracks in your library."
+                  variant="default"
+                />
               </div>
             )}
           </div>
