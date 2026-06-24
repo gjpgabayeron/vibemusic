@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Runtime, State};
 use tauri_plugin_updater::{Update, UpdaterExt};
 use serde::{Deserialize, Serialize};
+use crate::install_format::InstallFormat;
 
 // --- Types ---
 
@@ -14,6 +15,7 @@ pub struct UpdateMetadata {
     pub current_version: String,
     pub body: Option<String>,
     pub date: Option<String>,
+    pub requires_manual_download: bool,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -59,6 +61,7 @@ pub async fn check_update<R: Runtime>(
     app: AppHandle<R>,
     pending_update: State<'_, PendingUpdate>,
     channel: String,
+    install_format: String,
 ) -> Result<Option<UpdateMetadata>, String> {
     let mut builder = app.updater_builder();
 
@@ -70,11 +73,15 @@ pub async fn check_update<R: Runtime>(
     
     match updater.check().await {
         Ok(Some(update)) => {
+            let install_fmt: InstallFormat = serde_json::from_str(&format!("\"{}\"", install_format)).unwrap_or_default();
+            let requires_manual_download = !install_fmt.supports_auto_update();
+
             let metadata = UpdateMetadata {
                 version: update.version.clone(),
                 current_version: update.current_version.clone(),
                 body: update.body.clone(),
                 date: update.date.map(|d| d.to_string()),
+                requires_manual_download,
             };
             
             // Store the update for later download
@@ -149,6 +156,7 @@ pub async fn get_latest_release<R: Runtime>(
         current_version: env!("CARGO_PKG_VERSION").to_string(),
         body: manifest.notes,
         date: manifest.pub_date,
+        requires_manual_download: false,
     }))
 }
 

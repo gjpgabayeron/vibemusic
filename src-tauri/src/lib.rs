@@ -13,6 +13,7 @@ mod updater;
 mod watcher;
 mod lyrics;
 mod stats;
+mod install_format;
 
 
 use audio::{AudioEngine, AudioState};
@@ -89,6 +90,7 @@ pub fn run() {
             app.manage(DbCache(Mutex::new(HashMap::new())));
             app.manage(updater::PendingUpdate::default());
             app.manage(watcher::init());
+            app.manage(install_format::detect_install_format());
 
             // Initialize media events
             engine.init_media_events(app.handle().clone());
@@ -193,6 +195,8 @@ pub fn run() {
             // Stats
             stats::record_playback,
             stats::get_stats,
+            // Install format
+            install_format::get_install_format,
             // App
             quit_app,
         ])

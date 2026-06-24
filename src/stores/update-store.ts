@@ -7,6 +7,8 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { logger } from "@/lib/logger";
 import { toast } from "sonner";
 
+type InstallFormat = "msi" | "exe" | "dmg" | "appImage" | "deb" | "rpm" | "unknown";
+
 interface DownloadProgress {
   downloaded: number;
   total: number | null;
@@ -24,6 +26,9 @@ interface UpdateStore {
   error: string | null;
   lastChecked: Date | null;
   channel: "stable" | "dev";
+  installFormat: InstallFormat;
+  requiresManualDownload: boolean;
+  isManualUpdateDialogOpen: boolean;
 
   // Actions
   setChannel: (channel: "stable" | "dev") => void;
@@ -31,6 +36,8 @@ interface UpdateStore {
   fetchLatestRelease: () => Promise<void>;
   download: () => Promise<void>;
   install: () => Promise<void>;
+  openDownloadPage: () => void;
+  setManualUpdateDialogOpen: (open: boolean) => void;
   reset: () => void;
 }
 
@@ -48,33 +55,49 @@ export const useUpdateStore = create<UpdateStore>()(
       latestRelease: null,
       error: null,
       lastChecked: null,
+      installFormat: "unknown" as InstallFormat,
+      requiresManualDownload: false,
+      isManualUpdateDialogOpen: false,
 
       setChannel: (channel) => set({ channel }),
 
       check: async (silent = false) => {
         set({ isChecking: true, error: null });
-        const { channel } = get();
+        const { channel, installFormat } = get();
 
         try {
+          let fmt = installFormat;
+          if (fmt === "unknown") {
+            fmt = await invoke<InstallFormat>("get_install_format");
+            set({ installFormat: fmt });
+          }
+
           const update = await invoke<{
             version: string;
             currentVersion: string;
             body?: string;
             date?: string;
-          } | null>("check_update", { channel });
+            requiresManualDownload: boolean;
+          } | null>("check_update", { channel, installFormat: fmt });
 
           if (update) {
             set({
               isUpdateAvailable: true,
+              requiresManualDownload: update.requiresManualDownload,
               updateManifest: {
-                ...update,
+                version: update.version,
+                currentVersion: update.currentVersion,
+                body: update.body,
+                date: update.date,
                 downloadAndInstall: async () => {
-                  // Legacy compatibility
                   await invoke("download_and_install_update", { channel });
                 },
-              } as Update,
+              } as unknown as Update,
               lastChecked: new Date(),
             });
+            if (update.requiresManualDownload) {
+              set({ isManualUpdateDialogOpen: true });
+            }
             return true;
           } else {
             logger.info("No update available");
@@ -196,6 +219,17 @@ export const useUpdateStore = create<UpdateStore>()(
         }
       },
 
+      openDownloadPage: () => {
+        const url = "https://github.com/justCallMeJeg/vibemusic/releases";
+        import("@tauri-apps/plugin-opener").then(({ openUrl }) => {
+          openUrl(url);
+        }).catch(() => {
+          window.open(url, "_blank");
+        });
+      },
+
+      setManualUpdateDialogOpen: (open) => set({ isManualUpdateDialogOpen: open }),
+
       reset: () => {
         set({
           error: null,
@@ -203,6 +237,8 @@ export const useUpdateStore = create<UpdateStore>()(
           isDownloading: false,
           isReadyToInstall: false,
           downloadProgress: null,
+          requiresManualDownload: false,
+          isManualUpdateDialogOpen: false,
         });
       },
     }),

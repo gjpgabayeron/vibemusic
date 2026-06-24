@@ -1,5 +1,7 @@
 import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
+import { ManualUpdateDialog } from "@/components/dialogs/manual-update-dialog";
 import { Toaster } from "@/components/ui/sonner";
+import { useUpdateStore } from "@/stores/update-store";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,8 +42,15 @@ export function AppDialogs({
   setIsRefreshWarningOpen,
   handleConfirmRefresh,
 }: AppDialogsProps) {
+  const isManualUpdateDialogOpen = useUpdateStore((s) => s.isManualUpdateDialogOpen);
+  const setManualUpdateDialogOpen = useUpdateStore((s) => s.setManualUpdateDialogOpen);
+
   return (
     <>
+      <ManualUpdateDialog
+        open={isManualUpdateDialogOpen}
+        onOpenChange={setManualUpdateDialogOpen}
+      />
       <ConfirmDialog
         open={isQuitDialogOpen}
         onOpenChange={setIsQuitDialogOpen}
