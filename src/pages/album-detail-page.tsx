@@ -7,11 +7,9 @@ import {
   usePlayerStatus,
   useCurrentTrack,
 } from "@/stores/audio-store";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { Music, ChevronLeft } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import placeholderArt from "@/assets/placeholder-art.png";
 import { TrackListHeader } from "@/components/shared/track-list-header";
 import { ListItem } from "@/components/shared/list-item";
 import { ArtistLinks } from "@/components/shared/artist-links";
@@ -84,15 +82,11 @@ export default function AlbumDetailPage() {
     );
   }
 
-  const artworkSrc = album.artwork_path
-    ? convertFileSrc(album.artwork_path)
-    : placeholderArt;
-
   return (
     <DetailPageTemplate
       title={album.title}
       subtitle={album.artist_name || undefined}
-      artworkSrc={artworkSrc || undefined}
+      artworkPath={album.artwork_path}
       onBack={goBack}
       onPlay={handlePlay}
     >
@@ -119,7 +113,7 @@ export default function AlbumDetailPage() {
                 title={album.title}
                 subtitle={album.artist_name || "Unknown Artist"}
                 tertiaryText={formatDuration(album.total_duration_ms)}
-                artworkSrc={artworkSrc}
+                artworkPath={album.artwork_path}
                 onPlay={handlePlay}
                 onShuffle={handleShuffle}
               />

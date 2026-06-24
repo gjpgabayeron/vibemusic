@@ -10,13 +10,12 @@ import {
   Track,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { ArtworkImage } from "@/components/shared/artwork-image";
 import {
   ArrowLeft,
   Shuffle,
   ChevronLeft,
   ChevronRight,
-  User,
   Music,
 } from "lucide-react";
 import { CardItem } from "@/components/shared/card-item";
@@ -126,9 +125,7 @@ export default function ArtistDetailPage() {
     }
   };
 
-  const artworkSrc = artist.artwork_path
-    ? convertFileSrc(artist.artwork_path)
-    : undefined;
+
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollTop = e.currentTarget.scrollTop;
@@ -156,7 +153,7 @@ export default function ArtistDetailPage() {
         ref={headerRef}
         title={artist.name}
         subtitle={`${artist.album_count} Albums • ${artist.track_count} Songs`}
-        artworkSrc={artworkSrc}
+        artworkPath={artist.artwork_path}
         onBack={goBack}
         onPlay={() => handleShuffleArtist()}
       />
@@ -181,20 +178,12 @@ export default function ArtistDetailPage() {
             {/* Artist Info Header */}
             <div className="flex gap-6 mb-8">
               <div className="w-40 h-40 rounded-full overflow-hidden bg-card shrink-0 shadow-lg">
-                {artworkSrc ? (
-                  <img
-                    src={artworkSrc}
-                    alt={artist.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = artistPlaceholderArt;
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    <User className="w-20 h-20" />
-                  </div>
-                )}
+                <ArtworkImage
+                  src={artist.artwork_path}
+                  fallback={artistPlaceholderArt}
+                  alt={artist.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
 
               <div className="flex flex-col justify-center min-w-0">

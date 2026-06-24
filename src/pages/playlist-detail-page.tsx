@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { useLibraryStore } from "@/stores/library-store";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PlaylistEditDialog } from "@/components/dialogs/playlist-edit-dialog";
@@ -151,11 +150,7 @@ export default function PlaylistDetailPage() {
         ref={headerRef}
         title={playlist.name}
         subtitle={`${tracks.length} songs`}
-        artworkSrc={
-          playlist.artwork_path
-            ? convertFileSrc(playlist.artwork_path)
-            : undefined
-        }
+        artworkPath={playlist.artwork_path || undefined}
         onBack={goBack}
         onPlay={handlePlay}
       />
