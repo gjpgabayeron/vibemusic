@@ -83,15 +83,24 @@ jobs:
           git commit -m "chore: bump version to ${{ steps.version.outputs.NEW_VERSION }} [skip ci]" || echo "No changes to commit"
           git push origin dev
 
-      - name: Create versioned nightly tag
+      - name: Clean up existing nightly tags
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $nightlyTag = "v${{ steps.version.outputs.NEW_VERSION }}-nightly.$(Get-Date -Format 'yyyyMMdd')"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-          git tag -a "$nightlyTag" -m "Nightly build ${{ steps.version.outputs.NEW_VERSION }}"
-          git push origin "$nightlyTag"
-          Write-Host "Created versioned nightly tag: $nightlyTag"
+          git fetch --tags
+          $tags = @(git tag -l "*-nightly.*")
+          if ($tags.Count -gt 0) {
+            git remote set-url origin "https://x-access-token:$env:GH_TOKEN@github.com/${{ github.repository }}.git"
+            foreach ($tag in $tags) {
+              Write-Host "Deleting: $tag"
+              git push origin --delete $tag 2>$null
+              git tag -d $tag 2>$null
+            }
+            Write-Host "Cleaned up $($tags.Count) nightly tag(s)"
+          } else {
+            Write-Host "No nightly tags to clean up"
+          }
 
   build:
     needs: bump
@@ -197,6 +206,15 @@ jobs:
           name: changelog
           path: artifacts
 
+      - name: Normalize filenames for GitHub API
+        shell: pwsh
+        run: |
+          Get-ChildItem artifacts -Recurse -File | Where-Object { $_.Name -match ' ' } | ForEach-Object {
+            $newName = $_.Name -replace ' ', '.'
+            Write-Host "$($_.Name) -> $newName"
+            Rename-Item -Path $_.FullName -NewName $newName
+          }
+
       - name: Ensure nightly release exists
         shell: pwsh
         env:
@@ -217,7 +235,7 @@ jobs:
         run: |
           $newAssets = @()
           Get-ChildItem -Path artifacts -Recurse -File | Where-Object {
-            $_.Name -match '^Vibe Music[_-]' -or $_.Name -match '^Vibe Music\.app' -or $_.Name -eq 'latest.json'
+            $_.Name -match '^Vibe\.Music[_-]' -or $_.Name -eq 'latest.json'
           } | ForEach-Object {
             $newAssets += $_.Name
             Write-Host "Uploading: $($_.Name)"
@@ -278,7 +296,7 @@ jobs:
 
           $platforms = @{}
           Get-ChildItem -Path artifacts -Recurse -File | Where-Object {
-            $_.Name -match '^Vibe Music[_-]' -or $_.Name -match '^Vibe Music\.app'
+            $_.Name -match '^Vibe\.Music[_-]'
           } | ForEach-Object {
             $filename = $_.Name
             foreach ($key in $patterns.Keys) {
