@@ -4,7 +4,7 @@
   "workspaces": [
     "landing"
   ],
-  "version": "0.0.36",
+  "version": "0.0.37",
   "type": "module",
   "license": "GPL-3.0-only",
   "authors": [
