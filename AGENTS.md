@@ -7,6 +7,7 @@
 - **UI**: Radix primitives, Lucide icons, shadcn/ui (New York style, `@/components/ui/`)
 - **Database**: SQLite via `tauri-plugin-sql` with migrations in `src-tauri/migrations/`
 - **CSS**: `src/styles/globals.css` is the CSS entrypoint
+- **Landing page**: Static marketing site in `landing/` workspace (`@vibemusic/landing`), deployed to GitHub Pages from `master` on `landing/**` changes
 
 ## Commands
 | Command | What it does |
@@ -21,6 +22,10 @@
 | `npm run changelog:preview` | Preview unreleased changelog locally |
 | `npm run changelog:full` | Regenerate full CHANGELOG.md from all tags |
 | `npm run cleanup` | PowerShell cleanup script |
+| `npm run dev:landing` | Start landing page Vite dev server |
+| `npm run build:landing` | Build landing page to `landing/dist/` |
+| `npm run build -w landing` | Build landing page (workspace syntax) |
+| `npm run dev -w landing` | Dev landing page (workspace syntax) |
 
 ## Build & verification order
 `npm run build` runs typecheck (`tsc`) before bundling — no standalone `typecheck` script.

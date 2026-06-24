@@ -72,6 +72,7 @@ export default tseslint.config(
     ignores: [
       "node_modules/",
       "dist/",
+      "landing/",
       "src-tauri/",
       "*.config.js",
       "*.config.ts",

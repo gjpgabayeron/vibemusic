@@ -1,6 +1,9 @@
 {
   "name": "vibemusic",
   "private": true,
+  "workspaces": [
+    "landing"
+  ],
   "version": "0.0.36",
   "type": "module",
   "license": "GPL-3.0-only",
@@ -19,6 +22,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "dev:landing": "npm run dev -w landing",
+    "build:landing": "npm run build -w landing",
     "lint": "eslint src/ && stylelint \"src/**/*.css\"",
     "lint:fix": "eslint src/ --fix && stylelint \"src/**/*.css\" --fix",
     "lint:css": "stylelint \"src/**/*.css\"",
