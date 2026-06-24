@@ -1,7 +1,7 @@
 {
   "name": "vibemusic",
   "private": true,
-  "version": "0.0.33",
+  "version": "0.0.34",
   "type": "module",
   "license": "GPL-3.0-only",
   "authors": [
