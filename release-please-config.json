@@ -1,0 +1,12 @@
+{
+  "packages": {
+    ".": {
+      "package-name": "vibemusic",
+      "extra-files": [
+        "src-tauri/tauri.conf.json",
+        "src-tauri/Cargo.toml"
+      ],
+      "draft": true
+    }
+  }
+}
