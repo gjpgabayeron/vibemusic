@@ -88,6 +88,19 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build -- ${{ matrix.args }}
 
+      - name: Rename macOS updater artifact for architecture
+        if: matrix.platform == 'macos-latest'
+        shell: pwsh
+        run: |
+          $arch = if ('${{ matrix.args }}' -match 'aarch64') { 'aarch64' } else { 'x86_64' }
+          $bundle = '${{ matrix.bundle-path }}'
+          Get-ChildItem $bundle -Recurse -File | Where-Object { $_.Name -eq 'Vibe Music.app.tar.gz' } | ForEach-Object {
+            Rename-Item -Path $_.FullName -NewName "Vibe Music_$arch.app.tar.gz"
+          }
+          Get-ChildItem $bundle -Recurse -File | Where-Object { $_.Name -eq 'Vibe Music.app.tar.gz.sig' } | ForEach-Object {
+            Rename-Item -Path $_.FullName -NewName "Vibe Music_$arch.app.tar.gz.sig"
+          }
+
       - name: Upload bundle artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -148,8 +161,8 @@ jobs:
 
           $patterns = @{
             'windows-x86_64' = '_x64_en-US\.(msi|exe)(\.zip)?$'
-            'darwin-x86_64'  = '\.app\.tar\.gz$'
-            'darwin-aarch64' = '_aarch64\.dmg(\.tar\.gz)?$'
+            'darwin-x86_64'  = '_x86_64\.app\.tar\.gz$'
+            'darwin-aarch64' = '_aarch64\.app\.tar\.gz$'
             'linux-x86_64'   = '_amd64\.AppImage(\.tar\.gz)?$'
           }
 
