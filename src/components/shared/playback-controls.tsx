@@ -1,5 +1,13 @@
 import { Button } from "@/components/ui/button";
-import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Repeat1 } from "lucide-react";
+import {
+  Shuffle,
+  SkipBack,
+  Play,
+  Pause,
+  SkipForward,
+  Repeat,
+  Repeat1,
+} from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -31,7 +39,9 @@ export function PlaybackControls({
     <div className="flex items-center gap-2">
       <Tooltip delayDuration={1000}>
         <TooltipTrigger asChild>
-          <Button variant="ghost" onClick={onToggleShuffle}
+          <Button
+            variant="ghost"
+            onClick={onToggleShuffle}
             className={shuffle ? "text-primary" : ""}
             aria-label={shuffle ? "Shuffle on" : "Shuffle off"}
           >
@@ -43,7 +53,11 @@ export function PlaybackControls({
 
       <Tooltip delayDuration={1000}>
         <TooltipTrigger asChild>
-          <Button variant="ghost" onClick={onPrevious} aria-label="Previous track">
+          <Button
+            variant="ghost"
+            onClick={onPrevious}
+            aria-label="Previous track"
+          >
             <SkipBack size={20} />
           </Button>
         </TooltipTrigger>
@@ -52,12 +66,13 @@ export function PlaybackControls({
 
       <Tooltip delayDuration={1000}>
         <TooltipTrigger asChild>
-          <Button size="icon-lg" variant="ghost" onClick={onPlayPause} aria-label={isPlaying ? "Pause" : "Play"}>
-            {isPlaying ? (
-              <Pause className="fill-white" />
-            ) : (
-              <Play className="fill-white ml-0.5" />
-            )}
+          <Button
+            size="icon-lg"
+            variant="ghost"
+            onClick={onPlayPause}
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? <Pause /> : <Play />}
           </Button>
         </TooltipTrigger>
         <TooltipContent>{isPlaying ? "Pause" : "Play"}</TooltipContent>
@@ -74,14 +89,24 @@ export function PlaybackControls({
 
       <Tooltip delayDuration={1000}>
         <TooltipTrigger asChild>
-          <Button variant="ghost" onClick={onToggleRepeat}
+          <Button
+            variant="ghost"
+            onClick={onToggleRepeat}
             className={repeat !== "off" ? "text-primary" : ""}
-            aria-label={repeat === "off" ? "Repeat off" : repeat === "all" ? "Repeat all" : "Repeat one"}
+            aria-label={
+              repeat === "off"
+                ? "Repeat off"
+                : repeat === "all"
+                  ? "Repeat all"
+                  : "Repeat one"
+            }
           >
             {repeat === "one" ? <Repeat1 size={20} /> : <Repeat size={20} />}
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Repeat {repeat === "off" ? "Off" : repeat === "all" ? "All" : "One"}</TooltipContent>
+        <TooltipContent>
+          Repeat {repeat === "off" ? "Off" : repeat === "all" ? "All" : "One"}
+        </TooltipContent>
       </Tooltip>
     </div>
   );
