@@ -10,9 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Search, Check } from "lucide-react";
 import { Track, getTracks } from "@/lib/api";
 import { useLibraryStore } from "@/stores/library-store";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { logger } from "@/lib/logger";
-import placeholderArt from "@/assets/placeholder-art.png";
+import { ArtworkImage } from "../shared/artwork-image";
 import { ScrollingText } from "../shared/scrolling-text";
 
 interface TrackSelectDialogProps {
@@ -145,13 +144,9 @@ export function TrackSelectDialog({
                         toggleSelection(track.id);
                     }}
                   >
-                    <img
-                      src={
-                        track.artwork_path
-                          ? convertFileSrc(track.artwork_path)
-                          : placeholderArt
-                      }
-                      className="w-10 h-10 rounded object-cover bg-card shrink-0"
+                    <ArtworkImage
+                      src={track.artwork_path}
+                      className="w-10 h-10 rounded bg-card shrink-0"
                       alt=""
                     />
                     <div className="flex-1 min-w-0">

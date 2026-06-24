@@ -12,11 +12,9 @@ import {
 } from "@/stores/audio-store";
 
 import { useNavigationStore } from "@/stores/navigation-store";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { logger } from "@/lib/logger";
-
-import placeholderArt from "@/assets/placeholder-art.png";
+import { ArtworkImage } from "./shared/artwork-image";
 import { ScrollingText } from "./shared/scrolling-text";
 import { ArtistLinks } from "./shared/artist-links";
 import { VolumeControl } from "./shared/volume-control";
@@ -107,17 +105,12 @@ export default function MusicControler() {
       <div id="track" className="flex items-center gap-4">
         {currentTrack ? (
           <>
-            <img
-              className="aspect-square h-24 rounded-lg object-cover bg-card"
-              src={
-                currentTrack.artwork_path
-                  ? convertFileSrc(currentTrack.artwork_path)
-                  : placeholderArt
-              }
+            <ArtworkImage
+              src={currentTrack.artwork_path}
               alt={currentTrack.title}
+              className="aspect-square h-24 rounded-lg"
               width={96}
               height={96}
-              decoding="async"
             />
             <div className="flex flex-col min-w-0 w-full">
               <ScrollingText

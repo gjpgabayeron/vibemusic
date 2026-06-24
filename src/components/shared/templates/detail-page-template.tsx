@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 interface DetailPageTemplateProps {
   title: string;
   subtitle?: string;
-  artworkSrc?: string;
+  artworkPath?: string | null;
   onBack: () => void;
   onPlay?: () => void;
   children:
@@ -21,7 +21,7 @@ interface DetailPageTemplateProps {
 export function DetailPageTemplate({
   title,
   subtitle,
-  artworkSrc,
+  artworkPath,
   onBack,
   onPlay,
   children,
@@ -64,7 +64,7 @@ export function DetailPageTemplate({
         ref={headerRef}
         title={title}
         subtitle={subtitle}
-        artworkSrc={artworkSrc}
+        artworkPath={artworkPath}
         onBack={onBack}
         onPlay={onPlay}
       />

@@ -9,8 +9,7 @@ import {
   getQueueActions,
 } from "@/stores/audio-store";
 import QueueItem from "./shared/item/queue-item";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import placeholderArt from "@/assets/placeholder-art.png";
+import { ArtworkImage } from "./shared/artwork-image";
 import { Button } from "./ui/button";
 
 export default function QueueMenu() {
@@ -39,14 +38,10 @@ export default function QueueMenu() {
             Now Playing
           </h2>
           <div className="flex items-center gap-4 bg-secondary/50 p-3 rounded-lg border border-border">
-            <img
-              src={
-                currentTrack.artwork_path
-                  ? convertFileSrc(currentTrack.artwork_path)
-                  : placeholderArt
-              }
+            <ArtworkImage
+              src={currentTrack.artwork_path}
               alt={currentTrack.title}
-              className="w-12 h-12 rounded object-cover shadow-lg"
+              className="w-12 h-12 rounded shadow-lg"
             />
             <div className="min-w-0 flex-1">
               <p className="font-bold text-foreground truncate text-lg">

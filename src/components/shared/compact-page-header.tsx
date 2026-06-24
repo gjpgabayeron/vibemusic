@@ -2,11 +2,12 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { memo } from "react";
+import { ArtworkImage } from "@/components/shared/artwork-image";
 
 interface CompactPageHeaderProps {
   title: string;
   subtitle?: string;
-  artworkSrc?: string;
+  artworkPath?: string | null;
   onBack: () => void;
   onPlay?: () => void;
   className?: string;
@@ -15,7 +16,7 @@ interface CompactPageHeaderProps {
 }
 
 export const CompactPageHeader = memo(
-  ({ title, subtitle, artworkSrc, onBack, onPlay, className, style, ref }: CompactPageHeaderProps) => {
+  ({ title, subtitle, artworkPath, onBack, onPlay, className, style, ref }: CompactPageHeaderProps) => {
     return (
       <div
         ref={ref}
@@ -41,11 +42,11 @@ export const CompactPageHeader = memo(
             )}
           </div>
 
-          {artworkSrc && (
-            <img
-              src={artworkSrc}
+          {artworkPath && (
+            <ArtworkImage
+              src={artworkPath}
               alt={title}
-              className="w-8 h-8 rounded-md object-cover shadow-sm bg-card"
+              className="w-8 h-8 rounded-md shadow-sm bg-card"
             />
           )}
 

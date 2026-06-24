@@ -1,9 +1,8 @@
 import { useCurrentTrack, useAudioStore } from "@/stores/audio-store";
 import { useSidePanel } from "@/stores/audio-store";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import placeholderArt from "@/assets/placeholder-art.png";
 import { useMemo, useEffect, useState } from "react";
 import { probeFile, MediaMetadata } from "@/lib/api";
+import { ArtworkImage } from "@/components/shared/artwork-image";
 import { SidePanelLayout } from "@/components/shared/side-panel-layout";
 import { ArtistLinks } from "@/components/shared/artist-links";
 import TrackMetadata from "@/components/shared/track-metadata";
@@ -16,11 +15,6 @@ export default function TrackDetailPanel() {
   const [metadata, setMetadata] = useState<MediaMetadata | null>(null);
 
   const isOpen = sidePanel === "track-details";
-
-  const artworkSrc = useMemo(() => {
-    if (!currentTrack?.artwork_path) return placeholderArt;
-    return convertFileSrc(currentTrack.artwork_path);
-  }, [currentTrack?.artwork_path]);
 
   // Simple in-memory cache to avoid re-probing the same file
   // Using a ref to persist across re-renders without causing re-renders itself
@@ -86,8 +80,8 @@ export default function TrackDetailPanel() {
         {/* Artwork - Compact */}
         <div className="flex flex-col items-center mb-6">
           <div className="w-32 h-32 rounded-lg overflow-hidden shadow-xl mb-4 bg-card border border-border/50 relative group">
-            <img
-              src={artworkSrc}
+            <ArtworkImage
+              src={currentTrack.artwork_path}
               alt={currentTrack.title}
               className="w-full h-full object-cover"
             />

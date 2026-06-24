@@ -1,13 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Play, Shuffle } from "lucide-react";
-import placeholderArt from "@/assets/placeholder-art.png";
 import { cn } from "@/lib/utils";
+import { ArtworkImage } from "@/components/shared/artwork-image";
 
 interface DetailHeroProps {
   title: string;
   subtitle?: string;
   tertiaryText?: string;
-  artworkSrc?: string;
+  artworkPath?: string | null;
   onPlay?: () => void;
   onShuffle?: () => void;
   className?: string;
@@ -18,7 +18,7 @@ export function DetailHero({
   title,
   subtitle,
   tertiaryText,
-  artworkSrc,
+  artworkPath,
   onPlay,
   onShuffle,
   className,
@@ -26,13 +26,10 @@ export function DetailHero({
 }: DetailHeroProps) {
   return (
     <div className={cn("flex gap-6 mb-6 px-2", className)}>
-      <img
-        className="w-40 h-40 rounded-lg object-cover bg-card shrink-0 shadow-md"
-        src={artworkSrc || placeholderArt}
-        onError={(e) => {
-          e.currentTarget.src = placeholderArt;
-        }}
+      <ArtworkImage
+        src={artworkPath}
         alt={title}
+        className="w-40 h-40 rounded-lg shrink-0 shadow-md"
       />
       <div className="flex flex-col justify-center min-w-0 flex-1">
         <h2 className="text-3xl font-bold text-foreground line-clamp-2 leading-tight">

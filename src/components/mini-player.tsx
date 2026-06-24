@@ -23,11 +23,10 @@ import {
   usePosition,
   useDuration,
 } from "@/stores/audio-store";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { emit } from "@tauri-apps/api/event";
 import { useState, useEffect, useRef } from "react";
-import placeholderArt from "@/assets/placeholder-art.png";
+import { ArtworkImage } from "./shared/artwork-image";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useNavigationStore } from "@/stores/navigation-store";
 import type { Track } from "@/lib/api";
@@ -196,12 +195,8 @@ function MiniPlayerControls({
 
 function Art({ track, className }: { track: Track | null; className: string }) {
   return (
-    <img
-      src={
-        track?.artwork_path
-          ? convertFileSrc(track.artwork_path)
-          : placeholderArt
-      }
+    <ArtworkImage
+      src={track?.artwork_path}
       className={className}
       alt="Art"
     />
