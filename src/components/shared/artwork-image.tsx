@@ -3,8 +3,8 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { cn } from "@/lib/utils";
 import placeholderArt from "@/assets/placeholder-art.png";
 
-interface ArtworkImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
-  src?: string;
+interface ArtworkImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
+  src?: string | null;
   fallback?: string;
   className?: string;
 }
