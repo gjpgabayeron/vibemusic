@@ -5,6 +5,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { logger } from "@/lib/logger";
+import { toast } from "sonner";
+
+type InstallFormat = "msi" | "exe" | "dmg" | "appImage" | "deb" | "rpm" | "unknown";
 
 interface DownloadProgress {
   downloaded: number;
@@ -12,62 +15,89 @@ interface DownloadProgress {
 }
 
 interface UpdateStore {
+  // State
   isChecking: boolean;
   isDownloading: boolean;
+  isReadyToInstall: boolean;
   downloadProgress: DownloadProgress | null;
   isUpdateAvailable: boolean;
   updateManifest: Update | null;
+  latestRelease: Update | null;
   error: string | null;
   lastChecked: Date | null;
-
   channel: "stable" | "dev";
-  setChannel: (channel: "stable" | "dev") => void;
+  installFormat: InstallFormat;
+  requiresManualDownload: boolean;
+  isManualUpdateDialogOpen: boolean;
 
+  // Actions
+  setChannel: (channel: "stable" | "dev") => void;
   check: (silent?: boolean) => Promise<boolean>;
+  fetchLatestRelease: () => Promise<void>;
+  download: () => Promise<void>;
   install: () => Promise<void>;
+  openDownloadPage: () => void;
+  setManualUpdateDialogOpen: (open: boolean) => void;
   reset: () => void;
 }
 
 export const useUpdateStore = create<UpdateStore>()(
   persist(
     (set, get) => ({
+      // Initial state
       channel: "stable",
       isChecking: false,
       isDownloading: false,
+      isReadyToInstall: false,
       downloadProgress: null,
       isUpdateAvailable: false,
       updateManifest: null,
+      latestRelease: null,
       error: null,
       lastChecked: null,
+      installFormat: "unknown" as InstallFormat,
+      requiresManualDownload: false,
+      isManualUpdateDialogOpen: false,
 
       setChannel: (channel) => set({ channel }),
 
       check: async (silent = false) => {
         set({ isChecking: true, error: null });
-        const { channel } = get();
+        const { channel, installFormat } = get();
 
         try {
-          // Call Rust command
+          let fmt = installFormat;
+          if (fmt === "unknown") {
+            fmt = await invoke<InstallFormat>("get_install_format");
+            set({ installFormat: fmt });
+          }
+
           const update = await invoke<{
             version: string;
             currentVersion: string;
             body?: string;
             date?: string;
-          } | null>("check_update", {
-            channel,
-          });
+            requiresManualDownload: boolean;
+          } | null>("check_update", { channel, installFormat: fmt });
 
           if (update) {
             set({
               isUpdateAvailable: true,
+              requiresManualDownload: update.requiresManualDownload,
               updateManifest: {
-                ...update,
+                version: update.version,
+                currentVersion: update.currentVersion,
+                body: update.body,
+                date: update.date,
                 downloadAndInstall: async () => {
-                  await invoke("install_update", { channel });
+                  await invoke("download_and_install_update", { channel });
                 },
-              } as Update,
+              } as unknown as Update,
               lastChecked: new Date(),
             });
+            if (update.requiresManualDownload) {
+              set({ isManualUpdateDialogOpen: true });
+            }
             return true;
           } else {
             logger.info("No update available");
@@ -90,46 +120,125 @@ export const useUpdateStore = create<UpdateStore>()(
         }
       },
 
-      install: async () => {
-        const { updateManifest, channel } = get();
+      fetchLatestRelease: async () => {
+        const { channel } = get();
+        try {
+          const release = await invoke<{
+            version: string;
+            currentVersion: string;
+            body?: string;
+            date?: string;
+          } | null>("get_latest_release", { channel });
+
+          if (release) {
+            set({
+              latestRelease: {
+                ...release,
+                downloadAndInstall: async () => {},
+              } as Update,
+            });
+          }
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          logger.error("Failed to fetch latest release:", message);
+        }
+      },
+
+      download: async () => {
+        const { updateManifest } = get();
         if (!updateManifest) return;
 
-        let unlisten: UnlistenFn | null = null;
+        let unlistenProgress: UnlistenFn | null = null;
+        let unlistenComplete: UnlistenFn | null = null;
 
         try {
           set({ isDownloading: true, downloadProgress: null, error: null });
 
-          // Listen for download progress events from Rust
-          unlisten = await listen<DownloadProgress>(
+          // Listen for download progress events
+          unlistenProgress = await listen<DownloadProgress>(
             "update-download-progress",
             (event) => {
               set({ downloadProgress: event.payload });
             }
           );
 
-          // Start the download and install
-          await invoke("install_update", { channel });
+          // Listen for download complete event
+          unlistenComplete = await listen("update-download-complete", () => {
+            set({
+              isDownloading: false,
+              isReadyToInstall: true,
+              downloadProgress: null,
+            });
+            toast.success("Update ready to install", {
+              description: `Version ${updateManifest.version} has been downloaded.`,
+              action: {
+                label: "Install Now",
+                onClick: () => {
+                  useUpdateStore.getState().install();
+                },
+              },
+              duration: 10000,
+            });
+          });
 
-          logger.info("Update installed, relaunching...");
+          // Start the download (does not install)
+          await invoke("download_update");
+
+          logger.info("Update download complete");
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          logger.error("Failed to download update:", message);
+          set({ error: message, isDownloading: false });
+          toast.error("Download failed", {
+            description: message,
+          });
+        } finally {
+          if (unlistenProgress) unlistenProgress();
+          if (unlistenComplete) unlistenComplete();
+        }
+      },
+
+      install: async () => {
+        try {
+          set({ error: null });
+
+          logger.info("Installing update, app will restart...");
+
+          // Install the update (will trigger app restart)
+          await invoke("install_update");
+
+          // Relaunch the app
           await relaunch();
         } catch (e) {
           const message = e instanceof Error ? e.message : String(e);
           logger.error("Failed to install update:", message);
           set({ error: message });
-        } finally {
-          if (unlisten) {
-            unlisten();
-          }
-          set({ isDownloading: false, downloadProgress: null });
+          toast.error("Installation failed", {
+            description: message,
+          });
         }
       },
+
+      openDownloadPage: () => {
+        const url = "https://github.com/justCallMeJeg/vibemusic/releases";
+        import("@tauri-apps/plugin-opener").then(({ openUrl }) => {
+          openUrl(url);
+        }).catch(() => {
+          window.open(url, "_blank");
+        });
+      },
+
+      setManualUpdateDialogOpen: (open) => set({ isManualUpdateDialogOpen: open }),
 
       reset: () => {
         set({
           error: null,
           isChecking: false,
           isDownloading: false,
+          isReadyToInstall: false,
           downloadProgress: null,
+          requiresManualDownload: false,
+          isManualUpdateDialogOpen: false,
         });
       },
     }),

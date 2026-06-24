@@ -1,164 +1,209 @@
-import { useState } from "react";
-import { getAlbumTracks, getPlaylistTracks } from "@/lib/api";
+import { useState, useMemo } from "react";
 import { useNavigationStore } from "@/stores/navigation-store";
-import { useAudioStore } from "@/stores/audio-store";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import placeholderArt from "@/assets/placeholder-art.png";
-import MusicListItem from "@/components/shared/item/music-list";
+import {
+  useAudioStore,
+  useCurrentTrack,
+  usePlayerStatus,
+  useIsPlayerVisible,
+} from "@/stores/audio-store";
+import { logger } from "@/lib/logger";
+import { toast } from "sonner";
+import { getAlbumTracks, getPlaylistTracks, Playlist } from "@/lib/api";
+import { CardItem } from "@/components/shared/card-item";
+import { ListItem } from "@/components/shared/list-item";
+import { ArtistLinks } from "@/components/shared/artist-links";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Play } from "lucide-react";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
-/* import { usePlaylistStore } from "@/stores/playlist-store"; */
 import { PlaylistEditDialog } from "@/components/dialogs/playlist-edit-dialog";
 import { useScrollMask } from "@/hooks/use-scroll-mask";
-import { Pencil } from "lucide-react";
-import { Playlist } from "@/lib/api";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import { EmptyState } from "@/components/shared/empty-state";
 import { useLibraryStore } from "@/stores/library-store";
+import { ConfirmDialog } from "@/components/dialogs/confirm-dialog";
+import { PageLayout } from "@/components/shared/page-layout";
+import { HomeSkeleton } from "@/components/skeletons";
 
 export default function HomePage() {
   const albums = useLibraryStore((s) => s.albums);
   const tracks = useLibraryStore((s) => s.tracks);
   const playlists = useLibraryStore((s) => s.playlists);
   const isLoading = useLibraryStore((s) => s.isLoading);
+  const deletePlaylist = useLibraryStore((s) => s.deletePlaylist);
 
+  const setPage = useNavigationStore((s) => s.setPage);
+
+  const currentTrack = useCurrentTrack();
+  const status = usePlayerStatus();
+  const play = useAudioStore((s) => s.play);
+  const pause = useAudioStore((s) => s.pause);
+  const resume = useAudioStore((s) => s.resume);
+  const addToQueue = useAudioStore((s) => s.addToQueue);
+  const playNext = useAudioStore((s) => s.playNext);
   const openAlbumDetail = useNavigationStore((s) => s.openAlbumDetail);
   const openPlaylistDetail = useNavigationStore((s) => s.openPlaylistDetail);
-  const setPage = useNavigationStore((s) => s.setPage);
-  const play = useAudioStore((s) => s.play);
+  const addToPlaylist = useLibraryStore((s) => s.addToPlaylist);
 
-  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+  const handlePlayAlbum = async (albumId: number, shuffle = false) => {
+    try {
+      const tracks = await getAlbumTracks(albumId);
+      if (tracks.length === 0) {
+        toast.error("Album is empty");
+        return;
+      }
+      const queue = shuffle
+        ? [...tracks].sort(() => Math.random() - 0.5)
+        : tracks;
+      play(queue[0], queue);
+    } catch (e) {
+      logger.error("Failed to play album", e);
+    }
+  };
 
-  const scrollRef = useScrollMask();
-
-  // Derived state for display
-  const recentTracks = tracks.slice(0, 20);
-  // Sort albums by date or random? Library store maintains sort.
-  // We can just take the first few or random ones.
-  // For "Quick Picks" let's just take the first 10 for now.
-  const displayAlbums = albums.slice(0, 10);
-  const displayPlaylists = playlists;
-
-  const handlePlayAlbum = async (albumId: number) => {
+  const handlePlayNextAlbum = async (albumId: number) => {
     try {
       const tracks = await getAlbumTracks(albumId);
       if (tracks.length === 0) return;
-      play(tracks[0], tracks);
+      [...tracks].reverse().forEach((track) => playNext(track));
+      toast.success("Playing album next");
     } catch (e) {
-      console.error(e);
+      logger.error("Failed to play album next", e);
+      toast.error("Failed to play next");
     }
   };
 
-  const handlePlayPlaylist = async (playlistId: number) => {
+  const handleAddAlbumToQueue = async (albumId: number) => {
+    try {
+      const tracks = await getAlbumTracks(albumId);
+      if (tracks.length === 0) return;
+      tracks.forEach((track) => addToQueue(track));
+      toast.success("Added album to queue");
+    } catch (e) {
+      logger.error("Failed to add album to queue", e);
+    }
+  };
+
+  const handlePlayPlaylist = async (playlistId: number, shuffle = false) => {
+    try {
+      const tracks = await getPlaylistTracks(playlistId);
+      if (tracks.length === 0) {
+        toast.error("Playlist is empty");
+        return;
+      }
+      const queue = shuffle
+        ? [...tracks].sort(() => Math.random() - 0.5)
+        : tracks;
+      play(queue[0], queue);
+    } catch (e) {
+      logger.error("Failed to play playlist", e);
+    }
+  };
+
+  const handlePlayNextPlaylist = async (playlistId: number) => {
     try {
       const tracks = await getPlaylistTracks(playlistId);
       if (tracks.length === 0) return;
-      play(tracks[0], tracks);
+      [...tracks].reverse().forEach((track) => playNext(track));
+      toast.success("Playing playlist next");
     } catch (e) {
-      console.error(e);
+      logger.error("Failed to play playlist next", e);
+      toast.error("Failed to play next");
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
-        {/* Header Loading */}
-        <div className="mt-8 mb-4">
-          <Skeleton className="h-10 w-64 bg-white/10" />
-          <Skeleton className="h-4 w-48 mt-2 bg-white/5" />
-        </div>
+  const handleAddPlaylistToQueue = async (playlistId: number) => {
+    try {
+      const tracks = await getPlaylistTracks(playlistId);
+      if (tracks.length === 0) return;
+      tracks.forEach((track) => addToQueue(track));
+      toast.success("Added playlist to queue");
+    } catch (e) {
+      logger.error("Failed to add playlist to queue", e);
+    }
+  };
 
-        <div className="pt-4 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-42 space-y-8 custom-scrollbar">
-          {/* Albums Skeleton */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-6 w-24 bg-white/10" />
-            </div>
-            <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 scrollbar-none">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="w-40 shrink-0 space-y-3">
-                  <Skeleton className="aspect-square w-full rounded-xl bg-white/5" />
-                  <div>
-                    <Skeleton className="h-4 w-32 bg-white/10 mb-1" />
-                    <Skeleton className="h-3 w-20 bg-white/5" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+  const formatDuration = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
 
-          {/* Playlists Skeleton */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-6 w-24 bg-white/10" />
-            </div>
-            <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 scrollbar-none">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="w-40 shrink-0 space-y-3">
-                  <Skeleton className="aspect-square w-full rounded-xl bg-white/5" />
-                  <div>
-                    <Skeleton className="h-4 w-24 bg-white/10 mb-1" />
-                    <Skeleton className="h-3 w-16 bg-white/5" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
 
-          {/* Songs Skeleton */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-6 w-32 bg-white/10" />
-            </div>
-            <div className="flex flex-col gap-1">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 p-2 rounded-md">
-                  <Skeleton className="w-10 h-10 rounded-md bg-white/5 shrink-0" />
-                  <div className="flex-1 space-y-1">
-                    <Skeleton className="h-4 w-48 bg-white/10" />
-                    <Skeleton className="h-3 w-24 bg-white/5" />
-                  </div>
-                  <Skeleton className="h-3 w-12 bg-white/5" />
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      </div>
-    );
+  // Delete Dialog State
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [playlistToDelete, setPlaylistToDelete] = useState<Playlist | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!playlistToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deletePlaylist(playlistToDelete.id);
+    } catch (error) {
+      logger.error("Failed to delete playlist", error);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+      setPlaylistToDelete(null);
+    }
+  };
+
+  const handleDeleteRequest = (playlist: Playlist) => {
+    setPlaylistToDelete(playlist);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const scrollRef = useScrollMask();
+
+  // Dynamic padding based on player visibility
+  const isPlayerVisible = useIsPlayerVisible();
+
+  // Derived state for display - memoized to prevent new array creation on each render
+  const recentTracks = useMemo(() => tracks.slice(0, 20), [tracks]);
+  const displayAlbums = useMemo(() => albums.slice(0, 10), [albums]);
+  const displayPlaylists = useMemo(() => playlists.slice(0, 10), [playlists]);
+
+  const isEmpty =
+    !isLoading &&
+    displayAlbums.length === 0 &&
+    displayPlaylists.length === 0 &&
+    recentTracks.length === 0;
+
+  if (isLoading && albums.length === 0 && playlists.length === 0 && tracks.length === 0) {
+    return <HomeSkeleton />;
   }
 
   return (
-    <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+    <PageLayout overflowHidden>
       {/* Header */}
       <div className="mt-8 mb-6 px-2">
-        <h1 className="text-4xl font-bold bg-linear-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <h1 className="text-4xl font-bold brightness-50 dark:brightness-100 text-primary dark:text-primary">
           Welcome Back
         </h1>
-        <p className="text-gray-400 mt-1">Here's some music for you today.</p>
+        <p className="text-muted-foreground mt-1">
+          Here's some music for you today.
+        </p>
       </div>
       <div
         ref={scrollRef}
         className={cn(
           "flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-8 custom-scrollbar scroll-mask-y",
-          (displayAlbums.length > 0 || displayPlaylists.length > 0) && "pb-42"
+          (displayAlbums.length > 0 || displayPlaylists.length > 0) &&
+            (isPlayerVisible ? "pb-39" : "pb-8"),
+          isEmpty && "flex flex-col",
         )}
       >
         {/* Albums Section */}
         {displayAlbums.length > 0 && (
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Albums</h2>
+              <h2 className="text-xl font-bold text-foreground">Albums</h2>
               <Button
                 variant="ghost"
-                className="text-sm text-gray-400 hover:text-white"
+                className="text-sm text-muted-foreground hover:text-foreground"
                 onClick={() => setPage("albums")}
               >
                 See all <ChevronRight size={16} />
@@ -167,61 +212,22 @@ export default function HomePage() {
 
             <div className="flex overflow-x-auto gap-4 pb-4 -mx-2 px-2 scrollbar-none">
               {displayAlbums.map((album) => (
-                <ContextMenu key={album.id}>
-                  <ContextMenuTrigger>
-                    <div
-                      onClick={() => openAlbumDetail(album.id)}
-                      className="w-40 shrink-0 group cursor-pointer space-y-3"
-                    >
-                      <div className="aspect-square w-full rounded-xl bg-neutral-800 overflow-hidden relative">
-                        <img
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          loading="lazy"
-                          src={
-                            album.artwork_path
-                              ? convertFileSrc(album.artwork_path)
-                              : placeholderArt
-                          }
-                          onError={(e) => {
-                            e.currentTarget.src = placeholderArt;
-                          }}
-                          alt={album.title}
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <button
-                            className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePlayAlbum(album.id);
-                            }}
-                          >
-                            <Play
-                              fill="currentColor"
-                              className="ml-1"
-                              size={24}
-                            />
-                          </button>
-                        </div>
-                      </div>
-                      <div>
-                        <h3
-                          className="font-semibold text-white truncate"
-                          title={album.title}
-                        >
-                          {album.title}
-                        </h3>
-                        <p className="text-sm text-gray-400 truncate">
-                          {album.artist_name || "Unknown Artist"}
-                        </p>
-                      </div>
-                    </div>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    <ContextMenuItem onSelect={() => handlePlayAlbum(album.id)}>
-                      <Play className="mr-2 h-4 w-4" /> Play
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
+                <CardItem
+                  key={album.id}
+                  title={album.title}
+                  subtitle={album.artist_name || "Unknown Artist"}
+                  artworkSrc={album.artwork_path || undefined}
+                  artworkType="album"
+                  variant="compact"
+                  onClick={() => openAlbumDetail(album.id)}
+                  onPlay={() => handlePlayAlbum(album.id)}
+                  menuActions={{
+                    onPlay: () => handlePlayAlbum(album.id),
+                    onShuffle: () => handlePlayAlbum(album.id, true),
+                    onPlayNext: () => handlePlayNextAlbum(album.id),
+                    onAddToQueue: () => handleAddAlbumToQueue(album.id),
+                  }}
+                />
               ))}
             </div>
           </section>
@@ -231,10 +237,10 @@ export default function HomePage() {
         {displayPlaylists.length > 0 && (
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Playlists</h2>
+              <h2 className="text-xl font-bold text-foreground">Playlists</h2>
               <Button
                 variant="ghost"
-                className="text-sm text-gray-400 hover:text-white"
+                className="text-sm text-muted-foreground hover:text-foreground"
                 onClick={() => setPage("playlists")}
               >
                 See all <ChevronRight size={16} />
@@ -242,70 +248,25 @@ export default function HomePage() {
             </div>
 
             <div className="flex overflow-x-auto gap-4 pb-4 -mx-2 px-2 scrollbar-none">
-              {displayPlaylists.map((playlist) => (
-                <ContextMenu key={playlist.id}>
-                  <ContextMenuTrigger>
-                    <div
-                      onClick={() => openPlaylistDetail(playlist.id)}
-                      className="w-40 shrink-0 group cursor-pointer space-y-3"
-                    >
-                      <div className="aspect-square w-full rounded-xl bg-linear-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center relative overflow-hidden">
-                        {playlist.artwork_path ? (
-                          <img
-                            src={convertFileSrc(playlist.artwork_path)}
-                            alt={playlist.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          <span className="text-4xl font-bold text-white/50 select-none">
-                            {playlist.name.slice(0, 2).toUpperCase()}
-                          </span>
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <button
-                            className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePlayPlaylist(playlist.id);
-                            }}
-                          >
-                            <Play
-                              fill="currentColor"
-                              className="ml-1"
-                              size={24}
-                            />
-                          </button>
-                        </div>
-                      </div>
-                      <div>
-                        <h3
-                          className="font-semibold text-white truncate"
-                          title={playlist.name}
-                        >
-                          {playlist.name}
-                        </h3>
-                        <p className="text-sm text-gray-400 truncate">
-                          {playlist.track_count} tracks
-                        </p>
-                      </div>
-                    </div>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    <ContextMenuItem
-                      onSelect={() => handlePlayPlaylist(playlist.id)}
-                    >
-                      <Play className="mr-2 h-4 w-4" /> Play
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      onSelect={() => setEditingPlaylist(playlist)}
-                    >
-                      <Pencil className="mr-2 h-4 w-4" /> Edit
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
+              {displayPlaylists.map((p) => (
+                <CardItem
+                  key={p.id}
+                  title={p.name}
+                  subtitle={`${p.track_count} tracks`}
+                  artworkSrc={p.artwork_path || undefined}
+                  artworkType="playlist"
+                  variant="compact"
+                  onClick={() => openPlaylistDetail(p.id)}
+                  onPlay={() => handlePlayPlaylist(p.id)}
+                  menuActions={{
+                    onPlay: () => handlePlayPlaylist(p.id),
+                    onShuffle: () => handlePlayPlaylist(p.id, true),
+                    onPlayNext: () => handlePlayNextPlaylist(p.id),
+                    onAddToQueue: () => handleAddPlaylistToQueue(p.id),
+                    onEdit: () => setEditingPlaylist(p),
+                    onDelete: () => handleDeleteRequest(p),
+                  }}
+                />
               ))}
             </div>
           </section>
@@ -315,10 +276,12 @@ export default function HomePage() {
         {recentTracks.length > 0 && (
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Recently Added</h2>
+              <h2 className="text-xl font-bold text-foreground">
+                Recently Added
+              </h2>
               <Button
                 variant="ghost"
-                className="text-sm text-gray-400 hover:text-white"
+                className="text-sm text-muted-foreground hover:text-foreground"
                 onClick={() => setPage("songs")}
               >
                 See all <ChevronRight size={16} />
@@ -327,17 +290,62 @@ export default function HomePage() {
 
             <div className="flex flex-col gap-1">
               {recentTracks.map((track) => (
-                <MusicListItem
+                <ListItem
                   key={track.id}
-                  track={track}
-                  context={recentTracks}
+                  title={track.title}
+                  subtitle={
+                    <ArtistLinks
+                      names={track.artist_names}
+                      ids={track.artist_ids}
+                      fallbackName={track.artist}
+                      fallbackId={track.artist_id}
+                    />
+                  }
+                  artworkSrc={track.artwork_path || undefined}
+                  showArtwork
+                  active={currentTrack?.id === track.id}
+                  isPlaying={
+                    currentTrack?.id === track.id && status === "playing"
+                  }
+                  onClick={() => {
+                    if (currentTrack?.id === track.id) {
+                      if (status === "playing") pause();
+                      else resume();
+                    } else {
+                      play(track);
+                    }
+                  }}
+                  trailing={
+                    <p className="text-muted-foreground text-xs font-normal tabular-nums">
+                      {formatDuration(track.duration_ms)}
+                    </p>
+                  }
+                  menuActions={{
+                    onPlay: () => {
+                      if (currentTrack?.id === track.id) {
+                        if (status === "playing") pause();
+                        else resume();
+                      } else {
+                        play(track);
+                      }
+                    },
+                    onPlayNext: () => playNext(track),
+                    onAddToQueue: () => addToQueue(track),
+                    onAddToPlaylist: (playlistId) =>
+                      addToPlaylist(playlistId, track.id),
+                    playlists: playlists.map((p) => ({
+                      id: p.id,
+                      name: p.name,
+                    })),
+                  }}
                 />
               ))}
             </div>
           </section>
         )}
 
-        {displayAlbums.length === 0 &&
+        {!isLoading &&
+          displayAlbums.length === 0 &&
           displayPlaylists.length === 0 &&
           recentTracks.length === 0 && (
             <EmptyState
@@ -355,6 +363,18 @@ export default function HomePage() {
           onOpenChange={(open) => !open && setEditingPlaylist(null)}
         />
       )}
-    </div>
+
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Delete Playlist?"
+        description={`This action cannot be undone. This will permanently delete the playlist "${playlistToDelete?.name}".`}
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={confirmDelete}
+        isLoading={isDeleting}
+        loadingText="Deleting..."
+      />
+    </PageLayout>
   );
 }

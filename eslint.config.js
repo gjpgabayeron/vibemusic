@@ -4,6 +4,10 @@ import reactPlugin from "eslint-plugin-react";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import globals from "globals";
 
+const vitestGlobals = {
+  vitest: true,
+};
+
 export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
@@ -53,9 +57,22 @@ export default tseslint.config(
     },
   },
   {
+    files: ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "src/test/**"],
+    languageOptions: {
+      globals: {
+        ...globals.vitest,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "react-hooks/rules-of-hooks": "off",
+    },
+  },
+  {
     ignores: [
       "node_modules/",
       "dist/",
+      "landing/",
       "src-tauri/",
       "*.config.js",
       "*.config.ts",

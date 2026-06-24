@@ -17,10 +17,10 @@ use log::{info, warn, error};
 
 /// Supported audio file extensions
 const AUDIO_EXTENSIONS: &[&str] = &[
-    "mp3", "flac", "wav", "ogg", "m4a", "aac", "aiff", "wv", "opus",
+    "mp3", "flac", "wav", "ogg", "m4a", "aac", "aiff",
 ];
 
-/// Metadata extracted from an audio file
+/// Metadata extracted from an audio file.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TrackMetadata {
     pub file_path: String,
@@ -41,6 +41,7 @@ pub struct TrackMetadata {
     pub bit_rate: Option<u32>,
     pub channels: Option<u8>,
     pub artwork_path: Option<String>,
+    pub modification_time: u64,
 }
 
 /// Progress event emitted during scanning
@@ -68,16 +69,34 @@ fn is_audio_file(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
+use regex::Regex;
+use std::sync::OnceLock;
+
 /// Parse an artist string into individual artists
 fn parse_artists(artist_str: Option<&str>) -> Vec<String> {
     match artist_str {
         None => Vec::new(),
         Some(s) => {
-            let mut artists = Vec::new();
-            let splitters = [',', '&'];
 
-            for part in s.split(&splitters[..]) {
-                let trimmed = part.trim();
+            
+            // NOTE: We still split by & when surrounded by spaces (e.g. "A & B" becomes ["A", "B"]).
+            // But "Kool & The Gang" stays intact as "Kool & The Gang" because the regex requires spaces around &.
+            
+             static SAFE_SPLIT_RE: OnceLock<Regex> = OnceLock::new();
+             let safe_re = SAFE_SPLIT_RE.get_or_init(|| {
+                // Split by:
+                // 1. Semicolon ;
+                // 2. Comma , (with space)
+                // 3. Ampersand & (with spaces) — "Kool & The Gang" stays intact, "A & B" splits
+                // 4. " feat. ", " ft. " etc
+                Regex::new(r"(?i)\s*(?:;|,\s+|\s+&\s+|[\(\[]\s*(?:feat\.?|ft\.?|featuring|with|vs\.?)\s+|(?:\s+)(?:feat\.?|ft\.?|featuring|with|vs\.?)(?:\s+))\s*").expect("invalid artist-split regex")
+             });
+
+            let mut artists = Vec::new();
+            
+            for part in safe_re.split(s) {
+                 // Cleanup
+                let trimmed = part.trim_matches(|c| c == '(' || c == ')' || c == '[' || c == ']' || c == ' ').trim();
                 if !trimmed.is_empty() {
                     artists.push(trimmed.to_string());
                 }
@@ -91,12 +110,44 @@ fn parse_artists(artist_str: Option<&str>) -> Vec<String> {
     }
 }
 
+/// Extract featured artists from title
+/// Returns (Cleaned Title, List of Featured Artists)
+fn extract_features_from_title(title: &str) -> (String, Vec<String>) {
+     static FEAT_RE: OnceLock<Regex> = OnceLock::new();
+     let re = FEAT_RE.get_or_init(|| {
+        // Matches " (feat. Artist)" or " [ft. Artist]" at the end of string
+        Regex::new(r"(?i)\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring|with|vs\.?)\s+(.+?)[\)\]]?\s*$").expect("invalid feature regex")
+     });
+
+    if let Some(caps) = re.captures(title) {
+        if let Some(feat_part) = caps.get(1) {
+            let features = parse_artists(Some(feat_part.as_str()));
+            // Remove the match from title
+            let range = caps.get(0)
+                .map(|m| m.range())
+                .unwrap_or(0..title.len());
+            let mut new_title = title.to_string();
+            new_title.replace_range(range, "");
+            return (new_title.trim().to_string(), features);
+        }
+    }
+    
+    (title.to_string(), Vec::new())
+}
+
 /// Extract metadata from a single audio file
 fn extract_metadata(path: &Path, cache_dir: &Path) -> Result<TrackMetadata, String> {
     let file_path = path.to_string_lossy().to_string();
 
     let metadata =
         std::fs::metadata(path).map_err(|e| format!("Failed to read file metadata: {}", e))?;
+
+    let mtime = metadata
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
 
     let file_name = path
         .file_name()
@@ -140,17 +191,18 @@ fn extract_metadata(path: &Path, cache_dir: &Path) -> Result<TrackMetadata, Stri
             }
 
             let tag_data = if let Some(tag) = tag {
+                let raw_title_opt = tag.title().map(|s| s.to_string());
+                let (final_title, featured_artists) = match raw_title_opt {
+                    Some(ref t) => {
+                        let (c, f) = extract_features_from_title(t);
+                        (Some(c), f)
+                    },
+                    None => (None, Vec::new()),
+                };
+
                 let artist_str = tag
                     .artist()
-                    .map(|s| s.to_string())
-                    .or_else(|| {
-                        tag.get_string(&lofty::tag::ItemKey::AlbumArtist)
-                            .map(|s| s.to_string())
-                    })
-                    .or_else(|| {
-                        tag.get_string(&lofty::tag::ItemKey::TrackArtist)
-                            .map(|s| s.to_string())
-                    });
+                    .map(|s| s.to_string());
 
                 if artist_str.is_none() {
                     warn!(
@@ -160,7 +212,12 @@ fn extract_metadata(path: &Path, cache_dir: &Path) -> Result<TrackMetadata, Stri
                     );
                 }
 
-                let artists = parse_artists(artist_str.as_deref());
+                let mut artists = parse_artists(artist_str.as_deref());
+                artists.extend(featured_artists);
+                
+                // Remove duplicates while preserving order
+                let mut seen = std::collections::HashSet::new();
+                artists.retain(|x| seen.insert(x.clone()));
 
                 let artwork_path = tag
                     .pictures()
@@ -178,7 +235,7 @@ fn extract_metadata(path: &Path, cache_dir: &Path) -> Result<TrackMetadata, Stri
                 }
 
                 (
-                    tag.title().map(|s| s.to_string()),
+                    final_title,
                     artist_str,
                     artists,
                     tag.album().map(|s| s.to_string()),
@@ -321,6 +378,7 @@ fn extract_metadata(path: &Path, cache_dir: &Path) -> Result<TrackMetadata, Stri
         bit_rate,
         channels,
         artwork_path,
+        modification_time: mtime,
     })
 }
 
@@ -375,9 +433,22 @@ pub async fn scan_music_library(app: AppHandle, folders: Vec<String>) -> Result<
     let progress_counter = AtomicUsize::new(0);
     let (tx, rx) = mpsc::sync_channel::<Result<TrackMetadata, String>>(100);
 
-    // Get database path using profile helper
+    // Get database path
     let db_path = get_library_db_path(&app)?;
-    info!("Scanner using database at: {:?}", db_path);
+    
+    // Fetch existing metadata for (dumb) incremental scan
+    // We open a temporary connection here just to read the current state
+    let existing_map = {
+        let db = DbHelper::new(&db_path).map_err(|e| e.to_string())?;
+        let list = db.get_existing_metadata().map_err(|e| e.to_string())?;
+        let mut map = std::collections::HashMap::with_capacity(list.len());
+        for (path, size, mtime) in list {
+            map.insert(path, (size, mtime));
+        }
+        map
+    };
+    
+    info!("Scanner found {} existing tracks in DB", existing_map.len());
 
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let cache_dir = app_data_dir.join("covers");
@@ -446,17 +517,45 @@ pub async fn scan_music_library(app: AppHandle, folders: Vec<String>) -> Result<
 
     all_files.par_iter().for_each(|file_path| {
         let current = progress_counter.fetch_add(1, Ordering::SeqCst) + 1;
-        let _ = app.emit(
-            "scan-progress",
-            ScanProgress {
-                current,
-                total,
-                current_file: file_path.clone(),
-                status: "scanning".to_string(),
-            },
-        );
+        
+        // Throttling: Emit event only every 50 files to prevent IPC flood
+        if current % 50 == 0 || current == total {
+            let _ = app.emit(
+                "scan-progress",
+                ScanProgress {
+                    current,
+                    total,
+                    current_file: file_path.clone(),
+                    status: "scanning".to_string(),
+                },
+            );
+        }
 
-        let metadata = extract_metadata(Path::new(file_path), &cache_dir)
+        // Check for existing file (incremental scan)
+        let path = Path::new(file_path);
+        let metadata = match std::fs::metadata(path) {
+            Ok(m) => m,
+            Err(_) => return, // File likely deleted during scan
+        };
+
+        let fs_size = metadata.len();
+        let fs_mtime = metadata
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        // Optimization: Skip if file hasn't changed
+        if let Some((db_size, db_mtime)) = existing_map.get(file_path) {
+            if *db_size == fs_size && *db_mtime == fs_mtime {
+                // File unchanged, skip extraction and DB write
+                return;
+            }
+        }
+
+        // Proceed with full extraction
+        let metadata = extract_metadata(path, &cache_dir)
             .map_err(|e| format!("{}: {}", file_path, e));
         let _ = tx.send(metadata);
     });
@@ -465,7 +564,7 @@ pub async fn scan_music_library(app: AppHandle, folders: Vec<String>) -> Result<
 
     let (success_count, error_count) = match db_thread.join() {
         Ok(res) => res?,
-        Err(_) => return Err("Database thread panicked".to_string()),
+        Err(e) => return Err(format!("Database thread panicked: {:?}", e)),
     };
 
     let _ = app.emit(
@@ -546,4 +645,115 @@ pub async fn prune_library(app: AppHandle) -> Result<ScanStats, String> {
     .map_err(|_| "Thread panicked".to_string())??;
 
     Ok(stats)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_audio_file_mp3() {
+        assert!(is_audio_file(Path::new("song.mp3")));
+    }
+
+    #[test]
+    fn test_is_audio_file_flac() {
+        assert!(is_audio_file(Path::new("song.flac")));
+    }
+
+    #[test]
+    fn test_is_audio_file_wav() {
+        assert!(is_audio_file(Path::new("song.wav")));
+    }
+
+    #[test]
+    fn test_is_audio_file_ogg() {
+        assert!(is_audio_file(Path::new("song.ogg")));
+    }
+
+    #[test]
+    fn test_is_audio_file_case_insensitive() {
+        assert!(is_audio_file(Path::new("song.MP3")));
+        assert!(is_audio_file(Path::new("song.Flac")));
+    }
+
+    #[test]
+    fn test_is_audio_file_txt_is_not_audio() {
+        assert!(!is_audio_file(Path::new("readme.txt")));
+    }
+
+    #[test]
+    fn test_is_audio_file_no_extension() {
+        assert!(!is_audio_file(Path::new("song")));
+    }
+
+    #[test]
+    fn test_parse_artists_none() {
+        let result = parse_artists(None);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_artists_single() {
+        let result = parse_artists(Some("John Doe"));
+        assert_eq!(result, vec!["John Doe"]);
+    }
+
+    #[test]
+    fn test_parse_artists_semicolon() {
+        let result = parse_artists(Some("A; B"));
+        assert_eq!(result, vec!["A", "B"]);
+    }
+
+    #[test]
+    fn test_parse_artists_feat() {
+        let result = parse_artists(Some("A feat. B"));
+        assert_eq!(result, vec!["A", "B"]);
+    }
+
+    #[test]
+    fn test_parse_artists_ft() {
+        let result = parse_artists(Some("A ft. B"));
+        assert_eq!(result, vec!["A", "B"]);
+    }
+
+    #[test]
+    fn test_parse_artists_ampersand_splits() {
+        let result = parse_artists(Some("Kool & The Gang"));
+        assert_eq!(result, vec!["Kool", "The Gang"]);
+    }
+
+    #[test]
+    fn test_parse_artists_dedup() {
+        let result = parse_artists(Some("A; A; B"));
+        assert_eq!(result, vec!["A", "B"]);
+    }
+
+    #[test]
+    fn test_extract_features_from_title_no_feat() {
+        let (title, features) = extract_features_from_title("Song Name");
+        assert_eq!(title, "Song Name");
+        assert!(features.is_empty());
+    }
+
+    #[test]
+    fn test_extract_features_from_title_with_feat() {
+        let (title, features) = extract_features_from_title("Song (feat. Artist)");
+        assert_eq!(title, "Song");
+        assert_eq!(features, vec!["Artist"]);
+    }
+
+    #[test]
+    fn test_extract_features_from_title_with_ft_bracket() {
+        let (title, features) = extract_features_from_title("Song [ft. Artist]");
+        assert_eq!(title, "Song");
+        assert_eq!(features, vec!["Artist"]);
+    }
+
+    #[test]
+    fn test_extract_features_from_title_multiple_features() {
+        let (title, features) = extract_features_from_title("Song (feat. A & B)");
+        assert_eq!(title, "Song");
+        assert_eq!(features, vec!["A", "B"]);
+    }
 }

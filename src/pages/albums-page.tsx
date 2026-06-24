@@ -1,170 +1,169 @@
-import { getAlbumTracks } from "@/lib/api";
-import { useNavigationStore } from "@/stores/navigation-store";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import placeholderArt from "@/assets/placeholder-art.png";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
-import { Play, Shuffle, ListPlus, Disc } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Disc, Search } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
-import { useAudioStore } from "@/stores/audio-store";
-import { toast } from "sonner";
 import { useLibraryStore } from "@/stores/library-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { logger } from "@/lib/logger";
+import { getAlbumTracks } from "@/lib/api";
+import { useAudioStore } from "@/stores/audio-store";
+import { useNavigationStore } from "@/stores/navigation-store";
+import { CardItem } from "@/components/shared/card-item";
+import { VirtualizedGrid } from "@/components/shared/virtualized-grid";
+import { PageHeader } from "@/components/shared/page-header";
+import { SortDropdown } from "@/components/shared/sort-dropdown";
+import { PageLayout } from "@/components/shared/page-layout";
+import { AlbumsSkeleton } from "@/components/skeletons";
 
 export default function AlbumsPage() {
   const albums = useLibraryStore((s) => s.albums);
   const isLoading = useLibraryStore((s) => s.isLoading);
-  const openAlbumDetail = useNavigationStore((s) => s.openAlbumDetail);
+  const albumsSortKey = useSettingsStore((s) => s.albumsSortKey);
+  const albumsSortDirection = useSettingsStore((s) => s.albumsSortDirection);
+  const setAlbumsSort = useSettingsStore((s) => s.setAlbumsSort);
+  const [searchQuery, setSearchQuery] = useState("");
 
+  const openAlbumDetail = useNavigationStore((s) => s.openAlbumDetail);
   const play = useAudioStore((s) => s.play);
   const addToQueue = useAudioStore((s) => s.addToQueue);
   const playNext = useAudioStore((s) => s.playNext);
 
-  const handlePlayAlbum = async (albumId: number, shuffle: boolean = false) => {
+  const handlePlayAlbum = async (albumId: number, shuffle = false) => {
     try {
       const tracks = await getAlbumTracks(albumId);
-      if (tracks.length === 0) {
-        toast.error("Album is empty");
-        return;
-      }
-
-      let trackToPlay = tracks[0];
-      let queue = tracks;
-
-      if (shuffle) {
-        queue = [...tracks].sort(() => Math.random() - 0.5);
-        trackToPlay = queue[0];
-      }
-
-      play(trackToPlay, queue);
-    } catch (e) {
-      console.error("Failed to play album:", e);
-      toast.error("Failed to play album");
-    }
-  };
-
-  const handleAddToQueue = async (albumId: number) => {
-    try {
-      const tracks = await getAlbumTracks(albumId);
-      if (tracks.length === 0) return;
-
-      // Add one by one for now (store optimization needed for bulk add)
-      tracks.forEach((track) => addToQueue(track));
-      toast.success(`Added ${tracks.length} tracks to queue`);
-    } catch (e) {
-      console.error("Failed to add album to queue:", e);
-      toast.error("Failed to add to queue");
-    }
+      if (tracks.length === 0) { toast.error("Album is empty"); return; }
+      const queue = shuffle ? [...tracks].sort(() => Math.random() - 0.5) : tracks;
+      play(queue[0], queue);
+    } catch (e) { logger.error("Failed to play album", e); }
   };
 
   const handlePlayNext = async (albumId: number) => {
     try {
       const tracks = await getAlbumTracks(albumId);
       if (tracks.length === 0) return;
-
-      // Reverse because playNext inserts after current track
       [...tracks].reverse().forEach((track) => playNext(track));
       toast.success("Playing album next");
-    } catch (e) {
-      console.error("Failed to play album next:", e);
-      toast.error("Failed to play next");
-    }
+    } catch (e) { logger.error("Failed to play album next", e); toast.error("Failed to play next"); }
   };
 
-  const formatDuration = (ms: number) => {
-    const totalMinutes = Math.floor(ms / 60000);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m`;
+  const handleAddToQueue = async (albumId: number) => {
+    try {
+      const tracks = await getAlbumTracks(albumId);
+      if (tracks.length === 0) return;
+      tracks.forEach((track) => addToQueue(track));
+      toast.success("Added album to queue");
+    } catch (e) { logger.error("Failed to add album to queue", e); }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-gray-500">Loading albums...</div>
-      </div>
-    );
+  const filteredAndSortedAlbums = useMemo(() => {
+    let result = [...albums];
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (a) =>
+          a.title.toLowerCase().includes(query) ||
+          (a.artist_name && a.artist_name.toLowerCase().includes(query))
+      );
+    }
+
+    return result.sort((a, b) => {
+      let valA: string | number = "";
+      let valB: string | number = "";
+
+      switch (albumsSortKey) {
+        case "title":
+          valA = a.title.toLowerCase();
+          valB = b.title.toLowerCase();
+          break;
+        case "artist":
+          valA = (a.artist_name || "").toLowerCase();
+          valB = (b.artist_name || "").toLowerCase();
+          break;
+        case "year":
+          valA = a.year || 0;
+          valB = b.year || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (valA < valB) return albumsSortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return albumsSortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [albums, albumsSortKey, albumsSortDirection, searchQuery]);
+
+  if (isLoading && albums.length === 0) {
+    return <AlbumsSkeleton />;
   }
 
   return (
-    <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
-      <div className="mt-8 flex items-center justify-between mb-6 px-2">
-        <h1 className="text-3xl font-bold">Albums</h1>
-      </div>
-
-      <div className="flex-1 overflow-y-auto scroll-mask-y px-2">
-        {albums.length === 0 ? (
-          <EmptyState
-            icon={Disc}
-            title="No albums found"
-            description="Import music using the sidebar button to get started."
+    <PageLayout overflowHidden>
+      <PageHeader title="Albums">
+        <div className="relative w-64 mr-2">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Filter albums..."
+            className="pl-9"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoComplete="off"
           />
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-8">
-            {albums.map((album) => {
-              const artworkSrc = album.artwork_path
-                ? convertFileSrc(album.artwork_path)
-                : placeholderArt;
+        </div>
+        <SortDropdown
+          sortKey={albumsSortKey}
+          sortDirection={albumsSortDirection}
+          onSortChange={(k, d) => setAlbumsSort(k, d)}
+          options={[
+            { label: "Title", value: "title" },
+            { label: "Artist", value: "artist" },
+            { label: "Year", value: "year" },
+          ]}
+        />
+      </PageHeader>
 
-              return (
-                <ContextMenu key={album.id}>
-                  <ContextMenuTrigger>
-                    <div
-                      onClick={() => openAlbumDetail(album.id)}
-                      className="flex flex-col rounded-lg p-3 hover:bg-white/5 cursor-pointer transition-colors group"
-                    >
-                      <img
-                        className="aspect-square w-full rounded-lg object-cover bg-neutral-800 mb-3 group-hover:scale-[1.02] transition-transform"
-                        src={artworkSrc}
-                        onError={(e) => {
-                          e.currentTarget.src = placeholderArt;
-                        }}
-                        alt={album.title}
-                      />
-                      <p className="text-white text-sm font-bold line-clamp-1">
-                        {album.title}
-                      </p>
-                      <p className="text-gray-400 text-xs line-clamp-1">
-                        {album.artist_name || "Unknown Artist"}
-                      </p>
-                      <p className="text-gray-500 text-xs mt-1">
-                        {album.track_count} tracks •{" "}
-                        {formatDuration(album.total_duration_ms)}
-                      </p>
-                    </div>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    <ContextMenuItem
-                      onSelect={() => handlePlayAlbum(album.id, false)}
-                    >
-                      <Play className="mr-2 h-4 w-4" /> Play
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      onSelect={() => handlePlayAlbum(album.id, true)}
-                    >
-                      <Shuffle className="mr-2 h-4 w-4" /> Shuffle
-                    </ContextMenuItem>
-                    <ContextMenuItem onSelect={() => handlePlayNext(album.id)}>
-                      <ListPlus className="mr-2 h-4 w-4" /> Play Next
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      onSelect={() => handleAddToQueue(album.id)}
-                    >
-                      <ListPlus className="mr-2 h-4 w-4" /> Add to Queue
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+      <VirtualizedGrid
+        items={filteredAndSortedAlbums}
+        renderItem={(album) => (
+  <CardItem
+    key={album.id}
+    title={album.title}
+    subtitle={album.artist_name || "Unknown Artist"}
+    tertiaryText={`${album.track_count} tracks`}
+    artworkSrc={album.artwork_path || undefined}
+    artworkType="album"
+    variant="portrait"
+    onClick={() => openAlbumDetail(album.id)}
+    onPlay={() => handlePlayAlbum(album.id)}
+    menuActions={{
+      onPlay: () => handlePlayAlbum(album.id),
+      onShuffle: () => handlePlayAlbum(album.id, true),
+      onPlayNext: () => handlePlayNext(album.id),
+      onAddToQueue: () => handleAddToQueue(album.id),
+    }}
+  />
+)}
+        itemHeight={220}
+        emptyState={
+          !isLoading ? (
+            searchQuery ? (
+              <EmptyState
+                icon={Search}
+                title="No matches found"
+                description={`We couldn't find any albums matching "${searchQuery}"`}
+              />
+            ) : (
+              <EmptyState
+                icon={Disc}
+                title="No albums found"
+                description="Import music to see your albums here."
+              />
+            )
+          ) : null
+        }
+      />
+    </PageLayout>
   );
 }

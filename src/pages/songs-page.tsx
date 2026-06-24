@@ -1,10 +1,15 @@
 import { useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
-import MusicListItem from "@/components/shared/item/music-list";
+import { ListItem } from "@/components/shared/list-item";
+import {
+  useCurrentTrack,
+  usePlayerStatus,
+  useAudioStore,
+} from "@/stores/audio-store";
+import { ArtistLinks } from "@/components/shared/artist-links";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useScrollMask } from "@/hooks/use-scroll-mask";
 import {
   DropdownMenu,
@@ -19,26 +24,50 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ArrowUpDown, Search, Filter } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useLibraryStore } from "@/stores/library-store";
+import { useIsPlayerVisible } from "@/stores/audio-store";
+import { PageHeader } from "@/components/shared/page-header";
+import { PageLayout } from "@/components/shared/page-layout";
+import { SongsSkeleton } from "@/components/skeletons";
 
 type SortKey = "title" | "artist" | "date_added" | "duration";
 type SortDirection = "asc" | "desc";
 
 // Item height for virtualization (matches MusicListItem padding + content)
-const ITEM_HEIGHT = 56;
+const ITEM_HEIGHT = 60;
+
+const formatDuration = (ms: number) => {
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+};
 
 export default function SongsPage() {
   const tracks = useLibraryStore((s) => s.tracks);
   const isLoading = useLibraryStore((s) => s.isLoading);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Use persistent settings
-  const { songsSortKey, songsSortDirection, setSongsSort } = useSettingsStore();
+  // Use persistent settings - individual selectors for better re-render performance
+  const songsSortKey = useSettingsStore((s) => s.songsSortKey);
+  const songsSortDirection = useSettingsStore((s) => s.songsSortDirection);
+  const setSongsSort = useSettingsStore((s) => s.setSongsSort);
+
+  const currentTrack = useCurrentTrack();
+  const status = usePlayerStatus();
+  const play = useAudioStore((s) => s.play);
+  const pause = useAudioStore((s) => s.pause);
+  const resume = useAudioStore((s) => s.resume);
+  const addToQueue = useAudioStore((s) => s.addToQueue);
+  const playNext = useAudioStore((s) => s.playNext);
+  const playlists = useLibraryStore((s) => s.playlists);
+  const addToPlaylist = useLibraryStore((s) => s.addToPlaylist);
 
   // Ref for the scrollable container
   const parentRef = useRef<HTMLDivElement>(null);
 
   // Apply visual scroll mask using the same ref
   useScrollMask(24, parentRef);
+
+  // ... (existing code)
 
   // Filter and Sort Logic
   const displayedTracks = useMemo(() => {
@@ -51,7 +80,7 @@ export default function SongsPage() {
         (t) =>
           t.title.toLowerCase().includes(query) ||
           (t.artist && t.artist.toLowerCase().includes(query)) ||
-          (t.album && t.album.toLowerCase().includes(query))
+          (t.album && t.album.toLowerCase().includes(query)),
       );
     }
 
@@ -97,18 +126,24 @@ export default function SongsPage() {
     overscan: 5, // Render 5 extra items above/below viewport
   });
 
-  return (
-    <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
-      <div className="mt-8 flex items-center justify-between mb-6 px-2 gap-4">
-        <h1 className="text-3xl font-bold">Songs</h1>
+  // Dynamic padding based on player visibility
+  const isPlayerVisible = useIsPlayerVisible();
+  const bottomPadding = isPlayerVisible ? 156 : 24;
 
+  if (isLoading && tracks.length === 0) {
+    return <SongsSkeleton />;
+  }
+
+  return (
+    <PageLayout overflowHidden>
+      <PageHeader title="Songs">
         {/* Toolbar */}
         <div className="flex items-center gap-2">
           <div className="relative w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Filter songs..."
-              className="pl-9 bg-neutral-900 border-none"
+              className="pl-9"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoComplete="off"
@@ -163,32 +198,21 @@ export default function SongsPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="text-xs text-gray-500 ml-2 whitespace-nowrap">
+          <div className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
             {displayedTracks.length} tracks
           </div>
         </div>
-      </div>
+      </PageHeader>
 
       <div
         ref={parentRef}
-        className="flex-1 overflow-y-auto px-2 space-y-1 custom-scrollbar scroll-mask-y"
+        className={`flex-1 overflow-y-auto px-2 custom-scrollbar scroll-mask-y ${
+          displayedTracks.length === 0 ? "flex flex-col gap-1" : ""
+        }`}
       >
-        {isLoading ? (
-          <div className="flex flex-col gap-1">
-            {Array.from({ length: 15 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-2 rounded-md">
-                <Skeleton className="w-10 h-10 rounded-md bg-white/5 shrink-0" />
-                <div className="flex-1 space-y-1">
-                  <Skeleton className="h-4 w-48 bg-white/10" />
-                  <Skeleton className="h-3 w-24 bg-white/5" />
-                </div>
-                <Skeleton className="h-3 w-12 bg-white/5" />
-                <Skeleton className="h-3 w-12 bg-white/5" />
-              </div>
-            ))}
-          </div>
-        ) : displayedTracks.length === 0 ? (
-          searchQuery ? (
+        {displayedTracks.length === 0 ? (
+          !isLoading &&
+          (searchQuery ? (
             <EmptyState
               icon={Search}
               title="No matches found"
@@ -200,13 +224,13 @@ export default function SongsPage() {
               title="No songs found"
               description="Import music using the sidebar button to get started."
             />
-          )
+          ))
         ) : (
           <div
+            className="relative w-full"
             style={{
-              height: `${virtualizer.getTotalSize() + 168}px`, // +168px padding for controller
-              width: "100%",
-              position: "relative",
+              height: `${virtualizer.getTotalSize() + bottomPadding}px`,
+              transition: "height 300ms ease-in-out",
             }}
           >
             {virtualizer.getVirtualItems().map((virtualItem) => {
@@ -214,22 +238,68 @@ export default function SongsPage() {
               return (
                 <div
                   key={track.id}
+                  className="absolute top-0 left-0 w-full"
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
                     height: `${virtualItem.size}px`,
                     transform: `translateY(${virtualItem.start}px)`,
                   }}
                 >
-                  <MusicListItem track={track} />
+                  <ListItem
+                    title={track.title}
+                    subtitle={
+                      <ArtistLinks
+                        names={track.artist_names}
+                        ids={track.artist_ids}
+                        fallbackName={track.artist}
+                        fallbackId={track.artist_id}
+                      />
+                    }
+                    artworkSrc={
+                      track.artwork_path ? track.artwork_path : undefined
+                    }
+                    showArtwork
+                    active={currentTrack?.id === track.id}
+                    isPlaying={
+                      currentTrack?.id === track.id && status === "playing"
+                    }
+                    onClick={() => {
+                      if (currentTrack?.id === track.id) {
+                        if (status === "playing") pause();
+                        else resume();
+                      } else {
+                        play(track);
+                      }
+                    }}
+                    trailing={
+                      <p className="text-muted-foreground text-xs font-normal tabular-nums">
+                        {formatDuration(track.duration_ms)}
+                      </p>
+                    }
+                    menuActions={{
+                      onPlay: () => {
+                        if (currentTrack?.id === track.id) {
+                          if (status === "playing") pause();
+                          else resume();
+                        } else {
+                          play(track);
+                        }
+                      },
+                      onPlayNext: () => playNext(track),
+                      onAddToQueue: () => addToQueue(track),
+                      onAddToPlaylist: (playlistId) =>
+                        addToPlaylist(playlistId, track.id),
+                      playlists: playlists.map((p) => ({
+                        id: p.id,
+                        name: p.name,
+                      })),
+                    }}
+                  />
                 </div>
               );
             })}
           </div>
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 }

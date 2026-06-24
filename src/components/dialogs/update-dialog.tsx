@@ -1,15 +1,9 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useUpdateStore } from "@/stores/update-store";
-import { Loader2 } from "lucide-react";
+import { Download, X } from "lucide-react";
+import { logger } from "@/lib/logger";
 import ReactMarkdown from "react-markdown";
+import { StandardDialog } from "@/components/shared/standard-dialog";
 
 export function UpdateDialog({
   open,
@@ -18,64 +12,103 @@ export function UpdateDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { updateManifest, isChecking, install, error } = useUpdateStore();
+  const { updateManifest, latestRelease, download, error } = useUpdateStore();
+  const isDownloading = useUpdateStore((s) => s.isDownloading);
 
-  const handleInstall = async () => {
-    await install();
-    // Dialog stays open to show spinner/error
+  const hasUpdate = !!updateManifest;
+  const hasContent = !!(updateManifest ?? latestRelease);
+
+  const handleDownload = async () => {
+    onOpenChange(false);
+    try {
+      await download();
+    } catch (e) {
+      logger.error("Download failed", e);
+    }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col bg-neutral-900 border-neutral-800 text-white">
-        <DialogHeader>
-          <DialogTitle className="text-xl">New Version Available</DialogTitle>
-          <DialogDescription className="text-gray-400">
-            Version {updateManifest?.version} is ready to install.
-          </DialogDescription>
-        </DialogHeader>
+  const release = updateManifest ?? latestRelease;
+  const changelogBody = release?.body;
 
-        <div className="flex-1 overflow-y-auto my-4 p-4 rounded-md bg-neutral-950 border border-neutral-800">
-          <div className="prose prose-invert prose-sm max-w-none">
-            {updateManifest?.body ? (
-              <ReactMarkdown>{updateManifest.body}</ReactMarkdown>
+  const footer = hasUpdate ? (
+    <div className="flex gap-2 justify-end w-full">
+      <Button
+        variant="ghost"
+        onClick={() => onOpenChange(false)}
+        disabled={isDownloading}
+        className="text-muted-foreground hover:text-foreground hover:bg-accent"
+      >
+        Later
+      </Button>
+      <Button
+        onClick={handleDownload}
+        disabled={isDownloading}
+        className="bg-indigo-600 hover:bg-indigo-700 min-w-[140px]"
+      >
+        <Download className="mr-2 h-4 w-4" />
+        Download Update
+      </Button>
+    </div>
+  ) : (
+    <div className="flex gap-2 justify-end w-full">
+      <Button
+        variant="ghost"
+        onClick={() => onOpenChange(false)}
+        className="text-muted-foreground hover:text-foreground hover:bg-accent"
+      >
+        <X className="mr-2 h-4 w-4" />
+        Close
+      </Button>
+    </div>
+  );
+
+  return (
+    <StandardDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={hasUpdate ? "New Version Available" : "What's New"}
+      description={
+        hasUpdate
+          ? `Version ${release?.version} is ready to download.`
+          : `Latest version: ${release?.version}`
+      }
+      footer={footer}
+      contentClassName="max-w-2xl max-h-[80vh] flex flex-col"
+      className="flex flex-col flex-1 min-h-0"
+    >
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 my-4 p-4 rounded-md bg-card border border-border">
+        {!hasContent ? (
+          <p className="text-muted-foreground italic">
+            No release information available.
+          </p>
+        ) : (
+          <div
+            className="prose prose-invert prose-sm max-w-none break-words
+              prose-headings:text-indigo-400 prose-headings:font-semibold prose-headings:border-b prose-headings:border-border prose-headings:pb-2 prose-headings:mb-3
+              prose-h1:text-lg prose-h2:text-base prose-h3:text-sm
+              prose-p:text-muted-foreground prose-p:leading-relaxed
+              prose-a:text-indigo-400 prose-a:no-underline
+              prose-strong:text-foreground prose-strong:font-semibold
+              prose-code:text-indigo-300 prose-code:bg-secondary/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+              prose-pre:bg-background/50 prose-pre:border prose-pre:border-border
+              prose-ul:text-muted-foreground prose-ol:text-muted-foreground
+              prose-li:marker:text-indigo-400
+              prose-blockquote:border-l-indigo-500 prose-blockquote:bg-indigo-500/5 prose-blockquote:text-muted-foreground prose-blockquote:not-italic prose-blockquote:py-1"
+          >
+            {changelogBody ? (
+              <ReactMarkdown>{changelogBody}</ReactMarkdown>
             ) : (
-              <p className="text-gray-500 italic">No changelog provided.</p>
+              <p className="text-muted-foreground italic">
+                No changelog provided.
+              </p>
             )}
           </div>
-        </div>
-
-        {error && (
-          <div className="text-red-400 text-sm mb-4 px-1">Error: {error}</div>
         )}
+      </div>
 
-        <DialogFooter>
-          <div className="flex gap-2 justify-end w-full">
-            <Button
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-              disabled={isChecking}
-              className="hover:bg-white/10"
-            >
-              Later
-            </Button>
-            <Button
-              onClick={handleInstall}
-              disabled={isChecking}
-              className="bg-indigo-600 hover:bg-indigo-700 min-w-[100px]"
-            >
-              {isChecking ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                "Update Now"
-              )}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      {error && (
+        <div className="text-destructive text-sm mb-4 px-1">Error: {error}</div>
+      )}
+    </StandardDialog>
   );
 }

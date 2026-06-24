@@ -1,13 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Playlist, updatePlaylist } from "@/lib/api";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { StandardDialog } from "@/components/shared/standard-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +15,7 @@ import { join, appDataDir } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Loader2, Upload, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import { useLibraryStore } from "@/stores/library-store";
 import { Textarea } from "../ui/textarea";
 import { ImageCropDialog } from "./image-crop-dialog";
@@ -44,9 +38,7 @@ export function PlaylistEditDialog({
   // Image State
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
-  const [pendingCoverBytes, setPendingCoverBytes] = useState<Uint8Array | null>(
-    null
-  );
+  const pendingCoverBytesRef = useRef<Uint8Array | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const fetchPlaylists = useLibraryStore((s) => s.refreshPlaylists);
@@ -61,9 +53,6 @@ export function PlaylistEditDialog({
       });
 
       if (file) {
-        // Tauri 2: file is path string? Checks docs.
-        // open returns null | string | string[] depending on options.
-        // With multiple: false, it returns string | null.
         const path = file as string;
 
         // Read file to blob URL for cropper
@@ -74,13 +63,12 @@ export function PlaylistEditDialog({
         setIsCropDialogOpen(true);
       }
     } catch (e) {
-      console.error(e);
-      toast.error("Failed to select image");
+      logger.error("Failed to select image", e);
     }
   };
 
   const handleCropComplete = (croppedBytes: Uint8Array) => {
-    setPendingCoverBytes(croppedBytes);
+    pendingCoverBytesRef.current = croppedBytes;
     // Create preview
     const blob = new Blob([croppedBytes as unknown as BlobPart]);
     const url = URL.createObjectURL(blob);
@@ -95,7 +83,7 @@ export function PlaylistEditDialog({
     try {
       let finalArtworkPath = playlist.artwork_path;
 
-      if (pendingCoverBytes) {
+      if (pendingCoverBytesRef.current) {
         // Save to app data
         const fileName = `playlist_${playlist.id}_${Date.now()}.jpg`;
 
@@ -107,11 +95,9 @@ export function PlaylistEditDialog({
           recursive: true,
         });
 
-        // Wait, @tauri-apps/api/path join IS async in v2? Let's verify.
-        // Actually join is async.
         const pathPart = await join("covers", fileName);
 
-        await writeFile(pathPart, pendingCoverBytes, {
+        await writeFile(pathPart, pendingCoverBytesRef.current, {
           baseDir: BaseDirectory.AppData,
         });
 
@@ -119,7 +105,7 @@ export function PlaylistEditDialog({
         finalArtworkPath = await join(appData, "covers", fileName);
       }
 
-      console.log("Saving playlist update:", {
+      logger.debug("Saving playlist update", {
         id: playlist.id,
         name,
         description,
@@ -134,103 +120,104 @@ export function PlaylistEditDialog({
       );
       await fetchPlaylists(); // Update store list
 
-      // Update local if parent doesn't refresh automatically?
-      // Parent wraps this dialog, so we should close it.
       onOpenChange(false);
       toast.success("Playlist updated");
 
       // Clean up object URLs
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     } catch (e) {
-      console.error(e);
-      toast.error("Failed to update playlist");
+      logger.error("Failed to update playlist", e);
     } finally {
       setIsSaving(false);
     }
   };
 
+  const footer = (
+    <>
+      <Button
+        variant="ghost"
+        onClick={() => onOpenChange(false)}
+        className="text-muted-foreground hover:text-foreground hover:bg-accent"
+      >
+        Cancel
+      </Button>
+      <Button
+        onClick={handleSave}
+        disabled={isSaving}
+        className="bg-primary text-primary-foreground hover:bg-primary/90"
+      >
+        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Save Changes
+      </Button>
+    </>
+  );
+
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className="bg-neutral-900 border-white/10 text-white sm:max-w-md"
-          aria-describedby={undefined}
-        >
-          <DialogHeader>
-            <DialogTitle>Edit Playlist</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Make changes to your playlist here. Click save when you're done.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-6 py-4">
-            {/* Image Section */}
-            <div className="flex flex-col items-center gap-4">
-              {/* Image Preview / Selection */}
-              <div className="relative group">
-                <div
-                  className="w-40 h-40 rounded-lg bg-neutral-800 flex flex-col items-center justify-center cursor-pointer overflow-hidden border border-dashed border-white/20 hover:border-white/50 transition-colors"
-                  onClick={handleSelectImage}
-                >
-                  {previewUrl ? (
-                    <img
-                      src={previewUrl}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : playlist.artwork_path ? (
-                    <img
-                      src={convertFileSrc(playlist.artwork_path)}
-                      alt="Cover"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-gray-500">
-                      <Upload size={24} />
-                      <span className="text-xs">Change Cover</span>
-                    </div>
-                  )}
-
-                  {/* Overlay hint */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Pencil size={24} className="text-white" />
+      <StandardDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Edit Playlist"
+        description="Make changes to your playlist here. Click save when you're done."
+        footer={footer}
+        contentClassName="sm:max-w-md"
+      >
+        <div className="grid gap-6 py-4">
+          {/* Image Section */}
+          <div className="flex flex-col items-center gap-4">
+            {/* Image Preview / Selection */}
+            <div className="relative group">
+              <button
+                type="button"
+                aria-label="Select playlist cover image"
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSelectImage(); }}
+                className="w-40 h-40 rounded-lg bg-card flex flex-col items-center justify-center cursor-pointer overflow-hidden border border-dashed border-border hover:border-foreground/50 transition-colors"
+                onClick={handleSelectImage}
+              >
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : playlist.artwork_path ? (
+                  <img
+                    src={convertFileSrc(playlist.artwork_path)}
+                    alt="Cover"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Upload size={24} />
+                    <span className="text-xs">Change Cover</span>
                   </div>
-                </div>
-              </div>
-            </div>
+                )}
 
-            {/* Inputs */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Name</Label>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="bg-white/5 border-white/10"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="bg-white/5 border-white/10 resize-none h-20"
-                />
-              </div>
+                {/* Overlay hint */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Pencil size={24} className="text-white" />
+                </div>
+              </button>
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          {/* Inputs */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="resize-none h-24"
+              />
+            </div>
+          </div>
+        </div>
+      </StandardDialog>
 
       <ImageCropDialog
         imageSrc={cropImageSrc}

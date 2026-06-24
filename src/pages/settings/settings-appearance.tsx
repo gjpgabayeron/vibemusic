@@ -8,32 +8,36 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Moon, Sun, Monitor, Palette, Layout } from "lucide-react";
+import { ChevronDown, Moon, Sun, Monitor, Palette, Layout, Keyboard } from "lucide-react";
 import { SidebarCustomizer } from "./sidebar-customizer";
 
 export function SettingsAppearance() {
-  const {
-    theme,
-    setTheme,
-    dynamicGradient,
-    setDynamicGradient,
-    defaultPage,
-    setDefaultPage,
-  } = useSettingsStore();
+  const theme = useSettingsStore((s) => s.theme);
+  const setTheme = useSettingsStore((s) => s.setTheme);
+  const dynamicGradient = useSettingsStore((s) => s.dynamicGradient);
+  const setDynamicGradient = useSettingsStore((s) => s.setDynamicGradient);
+  const defaultPage = useSettingsStore((s) => s.defaultPage);
+  const setDefaultPage = useSettingsStore((s) => s.setDefaultPage);
+  const miniPlayerStyle = useSettingsStore((s) => s.miniPlayerStyle);
+  const setMiniPlayerStyle = useSettingsStore((s) => s.setMiniPlayerStyle);
+  const miniPlayerPosition = useSettingsStore((s) => s.miniPlayerPosition);
+  const setMiniPlayerPosition = useSettingsStore((s) => s.setMiniPlayerPosition);
+  const enableMediaKeys = useSettingsStore((s) => s.enableMediaKeys);
+  const setEnableMediaKeys = useSettingsStore((s) => s.setEnableMediaKeys);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 mb-6">
-        <Palette className="w-5 h-5 text-purple-500" />
+        <Palette className="w-5 h-5 text-primary" />
         <h2 className="text-xl font-semibold">Appearance</h2>
       </div>
 
       <div className="grid gap-6">
         {/* Theme Setting */}
-        <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+        <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 border border-border">
           <div className="space-y-1">
             <div className="font-medium">Theme</div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-muted-foreground">
               Choose your preferred visual theme
             </div>
           </div>
@@ -69,10 +73,10 @@ export function SettingsAppearance() {
         </div>
 
         {/* Dynamic Gradient Setting */}
-        <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+        <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 border border-border">
           <div className="space-y-1">
             <div className="font-medium">Dynamic Background</div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-muted-foreground">
               Ambient gradient based on current album art
             </div>
           </div>
@@ -81,17 +85,116 @@ export function SettingsAppearance() {
             onCheckedChange={setDynamicGradient}
           />
         </div>
+        {/* Mini Player Settings */}
+        <div className="flex flex-col gap-4 p-4 rounded-xl bg-secondary/50 border border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <Layout className="w-5 h-5 text-muted-foreground" />
+            <h3 className="font-medium">Mini Player</h3>
+          </div>
+
+          <div className="space-y-4">
+            {/* Layout */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">Layout</div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-32 justify-between">
+                    <span className="capitalize">{miniPlayerStyle}</span>
+                    <ChevronDown className="w-4 h-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuRadioGroup
+                    value={miniPlayerStyle}
+                    onValueChange={(v) =>
+                      setMiniPlayerStyle(v as "square" | "wide" | "bar")
+                    }
+                  >
+                    <DropdownMenuRadioItem value="square">
+                      Square
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="wide">
+                      Wide
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="bar">
+                      Bar
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Position */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">Position</div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-32 justify-between">
+                    <span className="capitalize">
+                      {miniPlayerPosition.replace("-", " ")}
+                    </span>
+                    <ChevronDown className="w-4 h-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuRadioGroup
+                    value={miniPlayerPosition}
+                    onValueChange={(v) =>
+                      setMiniPlayerPosition(
+                        v as
+                          | "bottom-right"
+                          | "bottom-left"
+                          | "top-right"
+                          | "top-left"
+                      )
+                    }
+                  >
+                    <DropdownMenuRadioItem value="bottom-right">
+                      Bottom Right
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="bottom-left">
+                      Bottom Left
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="top-right">
+                      Top Right
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="top-left">
+                      Top Left
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+
+        {/* Media Keys */}
+        <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 border border-border">
+          <div className="flex items-center gap-2">
+            <Keyboard className="w-5 h-5 text-muted-foreground shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">Media Keys</span>
+              <span className="text-xs text-muted-foreground">
+                Allow keyboard media keys to control playback
+              </span>
+            </div>
+          </div>
+          <Switch
+            checked={enableMediaKeys}
+            onCheckedChange={setEnableMediaKeys}
+          />
+        </div>
 
         {/* Sidebar Layout */}
-        <div className="flex flex-col gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+        <div className="flex flex-col gap-4 p-4 rounded-xl bg-secondary/50 border border-border">
           <div className="flex items-center gap-2 mb-2">
-            <Layout className="w-5 h-5 text-gray-400" />
+            <Layout className="w-5 h-5 text-muted-foreground" />
             <h3 className="font-medium">Sidebar Layout</h3>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-400">Default Page</div>
+              <div className="text-sm text-muted-foreground">Default Page</div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-32 justify-between">
@@ -121,8 +224,8 @@ export function SettingsAppearance() {
               </DropdownMenu>
             </div>
 
-            <div className="border-t border-white/5 pt-4">
-              <div className="text-sm text-gray-400 mb-2">
+            <div className="border-t border-border pt-4">
+              <div className="text-sm text-muted-foreground mb-2">
                 Customize Sidebar Items
               </div>
               <SidebarCustomizer />

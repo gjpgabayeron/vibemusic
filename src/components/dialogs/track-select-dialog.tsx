@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Search, Check } from "lucide-react";
 import { Track, getTracks } from "@/lib/api";
 import { useLibraryStore } from "@/stores/library-store";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import placeholderArt from "@/assets/placeholder-art.png";
+import { logger } from "@/lib/logger";
+import { ArtworkImage } from "../shared/artwork-image";
+import { ScrollingText } from "../shared/scrolling-text";
 
 interface TrackSelectDialogProps {
   open: boolean;
@@ -28,33 +29,30 @@ export function TrackSelectDialog({
 }: TrackSelectDialogProps) {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [search, setSearch] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<number>>(
-    new Set()
+    new Set(),
   );
   const [isAdding, setIsAdding] = useState(false);
 
   const addToPlaylist = useLibraryStore((s) => s.addToPlaylist);
 
+  const dialogKey = open ? "open" : "closed";
+
   useEffect(() => {
-    if (open) {
-      setIsLoading(true);
-      getTracks()
-        .then((data) => {
-          // Sort by artist, then title
-          const sorted = data.sort((a, b) => {
-            const artistA = a.artist || "";
-            const artistB = b.artist || "";
-            return (
-              artistA.localeCompare(artistB) || a.title.localeCompare(b.title)
-            );
-          });
-          setTracks(sorted);
-        })
-        .finally(() => setIsLoading(false));
-      setSelectedTrackIds(new Set());
-    }
-  }, [open]);
+    getTracks()
+      .then((data) => {
+        const sorted = [...data].sort((a, b) => {
+          const artistA = a.artist || "";
+          const artistB = b.artist || "";
+          return (
+            artistA.localeCompare(artistB) || a.title.localeCompare(b.title)
+          );
+        });
+        setTracks(sorted);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const filteredTracks = useMemo(() => {
     // Filter out existing tracks first
@@ -66,7 +64,7 @@ export function TrackSelectDialog({
       (t) =>
         t.title.toLowerCase().includes(lower) ||
         (t.artist && t.artist.toLowerCase().includes(lower)) ||
-        (t.album && t.album.toLowerCase().includes(lower))
+        (t.album && t.album.toLowerCase().includes(lower)),
     );
   }, [tracks, search, existingTrackIds]);
 
@@ -89,31 +87,31 @@ export function TrackSelectDialog({
       // Add all selected tracks
       // We can do this in parallel
       await Promise.all(
-        Array.from(selectedTrackIds).map((id) => addToPlaylist(playlistId, id))
+        Array.from(selectedTrackIds).map((id) => addToPlaylist(playlistId, id)),
       );
       onOpenChange(false);
     } catch (e) {
-      console.error(e);
+      logger.error("Failed to add tracks", e);
     } finally {
       setIsAdding(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-2xl h-[80vh] flex flex-col p-0 overflow-hidden outline-none">
+    <Dialog key={dialogKey} open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-popover border-border text-popover-foreground max-w-2xl h-[80vh] flex flex-col p-0 overflow-hidden outline-none">
         <DialogHeader className="p-4 pb-2 shrink-0">
           <DialogTitle>Add Songs to Playlist</DialogTitle>
           <div className="relative mt-2">
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
               size={16}
             />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search library..."
-              className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus-visible:ring-indigo-500"
+              className="pl-9"
               autoFocus
               autoComplete="off"
             />
@@ -122,11 +120,11 @@ export function TrackSelectDialog({
 
         <div className="flex-1 overflow-y-auto min-h-0 p-4 pt-0 custom-scrollbar">
           {isLoading ? (
-            <div className="text-gray-500 text-center py-8">
+            <div className="text-muted-foreground text-center py-8">
               Loading tracks...
             </div>
           ) : filteredTracks.length === 0 ? (
-            <div className="text-gray-500 text-center py-8">
+            <div className="text-muted-foreground text-center py-8">
               No tracks found
             </div>
           ) : (
@@ -134,58 +132,59 @@ export function TrackSelectDialog({
               {filteredTracks.map((track) => {
                 const isSelected = selectedTrackIds.has(track.id);
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={track.id}
-                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                      isSelected ? "bg-white/10" : "hover:bg-white/5"
+                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors text-left ${
+                      isSelected ? "bg-accent" : "hover:bg-accent/50"
                     }`}
                     onClick={() => toggleSelection(track.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ")
+                        toggleSelection(track.id);
+                    }}
                   >
-                    <img
-                      src={
-                        track.artwork_path
-                          ? convertFileSrc(track.artwork_path)
-                          : placeholderArt
-                      }
-                      className="w-10 h-10 rounded object-cover bg-neutral-800 shrink-0"
+                    <ArtworkImage
+                      src={track.artwork_path}
+                      className="w-10 h-10 rounded bg-card shrink-0"
                       alt=""
                     />
                     <div className="flex-1 min-w-0">
                       <div
                         className={`text-sm font-medium truncate ${
-                          isSelected ? "text-indigo-400" : "text-white"
+                          isSelected ? "text-primary" : "text-foreground"
                         }`}
                       >
-                        {track.title}
+                        <ScrollingText>{track.title}</ScrollingText>
                       </div>
-                      <div className="text-xs text-gray-400 truncate">
+                      <div className="text-xs text-muted-foreground truncate">
                         {track.artist || "Unknown Artist"}
                       </div>
                     </div>
                     <div
                       className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
                         isSelected
-                          ? "bg-indigo-500 border-indigo-500 text-white"
-                          : "border-gray-600 text-transparent"
+                          ? "bg-primary border-primary text-white"
+                          : "border-muted-foreground text-transparent"
                       }`}
                     >
                       <Check size={12} strokeWidth={3} />
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           )}
         </div>
 
-        <div className="p-4 border-t border-white/5 flex justify-end gap-2 bg-neutral-900">
+        <div className="p-4 border-t border-border flex justify-end gap-2 bg-popover">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={selectedTrackIds.size === 0 || isAdding}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {isAdding
               ? "Adding..."

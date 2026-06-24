@@ -1,81 +1,105 @@
 import "@fontsource/instrument-sans";
 import "./styles/globals.css";
 import MusicController from "./components/music-controller";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAudioStore } from "./stores/audio-store";
 
-import NavigationMenu from "./components/navigation-menu";
 import QueueMenu from "./components/queue-menu";
+import TrackDetailPanel from "./components/track-detail-panel";
+import LyricsPanel from "./components/lyrics-panel";
 import MainContent from "./components/main-content";
+import { BackgroundGradient } from "./components/background-gradient";
+import { SidebarSection } from "./components/sidebar-section";
 import { GlobalSearch } from "./components/dialogs/global-search";
-import { open } from "@tauri-apps/plugin-dialog";
-import { invoke } from "@tauri-apps/api/core";
-// import type { Track } from "@/lib/api";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { getDominantColor } from "./lib/color-utils";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { listen } from "@tauri-apps/api/event";
+import {
+  useWindowCloseHandler,
+  useRefreshInterceptor,
+  useScanProgressListener,
+} from "@/hooks/use-app-init";
+import type { CloseAction } from "@/hooks/use-app-init";
+import { useFolderImport } from "@/hooks/use-folder-import";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useNavigationStore, Page } from "@/stores/navigation-store";
 
 import { TitleBar } from "./components/titlebar";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useProfileStore } from "@/stores/profile-store";
-import ProfileSelectionPage from "@/pages/profile-selection-page";
+import { AppDialogs } from "./components/app-dialogs";
+import { ShellStates } from "@/components/shell-states";
 
 import { useLibraryStore } from "@/stores/library-store";
 import { logger } from "@/lib/logger";
-import { Toaster } from "@/components/ui/sonner";
+import { useProfileTheme } from "@/hooks/use-profile-theme";
 import { toast } from "sonner";
 import { useUpdateStore } from "./stores/update-store";
 
-// ... (imports)
+
 
 export default function App() {
-  const isQueueOpen = useAudioStore((s) => s.isQueueOpen);
+  const sidePanel = useAudioStore((s) => s.sidePanel);
   const initListeners = useAudioStore((s) => s.initListeners);
   const currentTrack = useAudioStore((s) => s.currentTrack);
-  const status = useAudioStore((s) => s.status); // Get status directly or use selector
-  const [isScanning, setIsScanning] = useState(false);
+  const status = useAudioStore((s) => s.status);
   const [gradientColor, setGradientColor] = useState<string>("transparent");
   const [isQuitDialogOpen, setIsQuitDialogOpen] = useState(false);
+  const [isCloseToTrayDialogOpen, setIsCloseToTrayDialogOpen] = useState(false);
+  const [showProfileSwitchWarning, setShowProfileSwitchWarning] = useState(false);
 
-  const {
-    theme,
-    dynamicGradient,
-    loadSettings,
-    isLoading: isSettingsLoading,
-    addLibraryPath,
-    libraryPaths,
-  } = useSettingsStore();
+  const hasCheckedForUpdate = useRef(false);
+  const hasDoneInitialScan = useRef(false); // Prevent scan on profile switch
+  const stop = useAudioStore((s) => s.stop);
 
-  // Library Store Initialization
+  // Refresh Warning State
+  const [isRefreshWarningOpen, setIsRefreshWarningOpen] = useState(false);
+  const isPlaying = status === "playing";
+
+  const resolvedTheme = useSettingsStore((s) => s.resolvedTheme);
+  const loadSettings = useSettingsStore((s) => s.loadSettings);
+  const isSettingsLoading = useSettingsStore((s) => s.isLoading);
+  const initSystemThemeListener = useSettingsStore(
+    (s) => s.initSystemThemeListener,
+  );
+
+
+  useRefreshInterceptor(isPlaying, () => setIsRefreshWarningOpen(true));
+
+  const handleConfirmRefresh = async () => {
+    await stop();
+    setIsRefreshWarningOpen(false);
+    window.location.reload();
+  };
+
   const fetchLibrary = useLibraryStore((s) => s.fetchLibrary);
-  useEffect(() => {
-    fetchLibrary();
-  }, [fetchLibrary]);
 
-  const {
-    activeProfileId,
-    profiles,
-    loadProfiles,
-    selectProfile,
-    isLoading: isProfilesLoading,
-  } = useProfileStore();
+  const activeProfileId = useProfileStore((s) => s.activeProfileId);
+  const profiles = useProfileStore((s) => s.profiles);
+  const loadProfiles = useProfileStore((s) => s.loadProfiles);
+  const selectProfile = useProfileStore((s) => s.selectProfile);
+  const isProfilesLoading = useProfileStore((s) => s.isLoading);
 
   const activeProfile = profiles.find((p) => p.id === activeProfileId);
 
+  useProfileTheme();
+
   const isPlayerVisible = !!currentTrack && status !== "stopped";
+
+  const handleProfileClick = () => {
+    // Check if playback is active
+    if (currentTrack && (status === "playing" || status === "paused")) {
+      setShowProfileSwitchWarning(true);
+    } else {
+      selectProfile(null);
+    }
+  };
+
+  const confirmProfileSwitch = async () => {
+    await stop();
+    setShowProfileSwitchWarning(false);
+    selectProfile(null);
+  };
 
   // Load profiles on mount
   useEffect(() => {
@@ -89,7 +113,7 @@ export default function App() {
     }
   }, [activeProfileId, loadSettings]);
 
-  // Handle defaults after settings load
+
   useEffect(() => {
     if (!isSettingsLoading && activeProfileId) {
       // Apply settings logic
@@ -98,10 +122,16 @@ export default function App() {
         useNavigationStore.getState().setPage(settings.defaultPage as Page);
       }
 
-      if (settings.scanOnStartup && settings.libraryPaths.length > 0) {
+      // Only run scanOnStartup on INITIAL app load, not when switching profiles
+      if (
+        !hasDoneInitialScan.current &&
+        settings.scanOnStartup &&
+        settings.libraryPaths.length > 0
+      ) {
+        hasDoneInitialScan.current = true;
         logger.info(
           "Auto-scanning library paths on startup:",
-          settings.libraryPaths
+          settings.libraryPaths,
         );
         setIsScanning(true);
         invoke("scan_music_library", { folders: settings.libraryPaths })
@@ -113,70 +143,77 @@ export default function App() {
       }
 
       // Check for updates
-      const updateStore = useUpdateStore.getState();
-      updateStore.check(true).then((hasUpdate) => {
-        if (hasUpdate) {
-          toast.info("Update Available", {
-            description: "A new version of vibemusic is available.",
-            action: {
-              label: "View",
-              onClick: () => {
-                useNavigationStore.getState().setPage("about"); // Navigate to settings/about
+      if (!hasCheckedForUpdate.current) {
+        hasCheckedForUpdate.current = true;
+        const updateStore = useUpdateStore.getState();
+        updateStore.check(true).then((hasUpdate) => {
+          if (hasUpdate) {
+            toast.info("Update Available", {
+              description: "A new version of vibemusic is available.",
+              action: {
+                label: "View",
+                onClick: () => {
+                  useNavigationStore.getState().setPage("about"); // Navigate to settings/about
+                },
               },
-            },
-            duration: 10000,
-          });
-        }
-      });
+              duration: 10000,
+            });
+          }
+        });
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSettingsLoading, activeProfileId, fetchLibrary]);
 
-  // Handle Close-to-Tray and Quit Confirmation
-  useEffect(() => {
-    const appWindow = getCurrentWindow();
-    const unlistenPromise = appWindow.onCloseRequested(async (event) => {
-      // Prevent default close to handle everything manually
-      event.preventDefault();
+  const handleQuitApp = async () => {
+    setIsQuitDialogOpen(false);
+    setIsCloseToTrayDialogOpen(false);
+    await invoke("quit_app");
+  };
 
-      const { closeToTray } = useSettingsStore.getState();
+  const handleCloseToTrayHide = async () => {
+    setIsCloseToTrayDialogOpen(false);
+    await getCurrentWindow().hide();
+  };
 
-      if (closeToTray) {
-        await appWindow.hide();
-      } else {
+  useWindowCloseHandler((action: CloseAction) => {
+    switch (action) {
+      case "show-quit-dialog":
         setIsQuitDialogOpen(true);
-      }
-    });
+        break;
+      case "show-close-to-tray-dialog":
+        setIsCloseToTrayDialogOpen(true);
+        break;
+      case "quit-directly":
+        handleQuitApp();
+        break;
+    }
+  });
 
-    return () => {
-      unlistenPromise.then((unlisten) => unlisten());
-    };
-  }, []);
+  // Listen for global scan progress to refresh library - extracted to custom hook
+  useScanProgressListener(fetchLibrary);
 
-  // Listen for global scan progress to refresh library
+  const isPlaybackActive = status === "playing" || status === "paused";
+
+  // Update gradient when track changes - only show when actually playing/paused
   useEffect(() => {
-    const unlistenPromise = listen(
-      "scan-progress",
-      (event: { payload: { status: string } }) => {
-        if (event.payload?.status === "complete") {
-          logger.info("Scan complete event received, refreshing library...");
-          fetchLibrary();
-        }
-      }
-    );
-    return () => {
-      unlistenPromise.then((u) => u());
-    };
-  }, [fetchLibrary]);
+    if (!isPlaybackActive) {
+      setGradientColor("transparent");
+      return;
+    }
 
-  // Update gradient when track changes
-  useEffect(() => {
     if (currentTrack?.artwork_path) {
       const src = convertFileSrc(currentTrack.artwork_path);
-      getDominantColor(src).then((color) => setGradientColor(color));
+      let cancelled = false;
+      getDominantColor(src).then((color) => {
+        if (!cancelled) setGradientColor(color);
+      });
+      return () => { cancelled = true; };
     } else {
       setGradientColor("transparent");
     }
-  }, [currentTrack]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrack?.id, isPlaybackActive]);
 
   // Initialize audio event listeners
   useEffect(() => {
@@ -184,194 +221,84 @@ export default function App() {
     return cleanup;
   }, [initListeners]);
 
+  // Initialize system theme listener
+  useEffect(() => {
+    const cleanup = initSystemThemeListener();
+    return cleanup;
+  }, [initSystemThemeListener]);
+
+  const { handleFolderImport, isScanning, setIsScanning } = useFolderImport();
+
   // Auto-close queue when empty
   const queue = useAudioStore((s) => s.queue);
-  const toggleQueue = useAudioStore((s) => s.toggleQueue);
+  const setSidePanel = useAudioStore((s) => s.setSidePanel);
 
   useEffect(() => {
-    if (isQueueOpen && queue.length === 0) {
-      toggleQueue();
+    if (sidePanel === "queue" && queue.length === 0) {
+      setSidePanel("none");
     }
-  }, [isQueueOpen, queue.length, toggleQueue]);
+  }, [sidePanel, queue.length, setSidePanel]);
 
-  const handleFolderImport = async () => {
-    try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-      });
-
-      if (selected && typeof selected === "string") {
-        setIsScanning(true);
-        const toastId = toast.loading(`Importing ${selected}...`);
-        logger.info("Importing folder:", selected);
-
-        let stats;
-
-        if (!libraryPaths.includes(selected)) {
-          // New folder: Add to settings (returns stats)
-          stats = await addLibraryPath(selected);
-          logger.info("Added folder to settings:", selected);
-        } else {
-          // Existing folder: Re-scan
-          logger.info("Rescanning existing folder:", selected);
-          stats = await invoke<{
-            scanned_count: number;
-            success_count: number;
-            error_count: number;
-          }>("scan_music_library", { folders: [selected] });
-          await fetchLibrary();
-        }
-
-        if (stats) {
-          if (stats.error_count > 0) {
-            toast.warning(`Scan complete with ${stats.error_count} errors`, {
-              id: toastId,
-              description: `Imported ${stats.success_count} tracks. Check logs for details.`,
-            });
-          } else {
-            toast.success(`Imported ${stats.scanned_count} tracks`, {
-              id: toastId,
-              description: "Library updated successfully.",
-            });
-          }
-        } else {
-          toast.success("Folder added", { id: toastId });
-        }
-      }
-    } catch (error) {
-      logger.error("Failed to import folder:", error);
-      toast.error("Failed to import folder", {
-        description: error instanceof Error ? error.message : String(error),
-      });
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
-  const quitDialog = (
-    <AlertDialog open={isQuitDialogOpen} onOpenChange={setIsQuitDialogOpen}>
-      <AlertDialogContent className="bg-neutral-900 border-neutral-800 text-white">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure you want to quit?</AlertDialogTitle>
-          <AlertDialogDescription className="text-gray-400">
-            Playback will stop. You can enable "Close to Tray" in settings to
-            keep music playing in the background.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white">
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction
-            className="bg-indigo-600 hover:bg-indigo-700 text-white border-none"
-            onClick={() => getCurrentWindow().destroy()}
-          >
-            Quit
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-
-  if (isProfilesLoading) {
+  if (isProfilesLoading || !activeProfileId) {
     return (
-      <div className="h-screen w-screen bg-black text-white relative flex flex-col">
-        <TitleBar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4 animate-pulse">
-            <div className="w-12 h-12 rounded-full bg-white/10" />
-            <div className="w-32 h-4 rounded-full bg-white/10" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!activeProfileId) {
-    return (
-      <div className="h-screen w-screen bg-black text-white relative flex flex-col">
-        <TitleBar />
-        <div className="flex-1 overflow-hidden">
-          <ProfileSelectionPage />
-        </div>
-        {quitDialog}
-      </div>
+      <ShellStates
+        isProfilesLoading={isProfilesLoading}
+        activeProfileId={activeProfileId}
+        isQuitDialogOpen={isQuitDialogOpen}
+        setIsQuitDialogOpen={setIsQuitDialogOpen}
+        onConfirmQuit={handleQuitApp}
+        isCloseToTrayDialogOpen={isCloseToTrayDialogOpen}
+        setIsCloseToTrayDialogOpen={setIsCloseToTrayDialogOpen}
+        onConfirmCloseToTrayHide={handleCloseToTrayHide}
+        showProfileSwitchWarning={showProfileSwitchWarning}
+        setShowProfileSwitchWarning={setShowProfileSwitchWarning}
+        confirmProfileSwitch={confirmProfileSwitch}
+        isRefreshWarningOpen={isRefreshWarningOpen}
+        setIsRefreshWarningOpen={setIsRefreshWarningOpen}
+        handleConfirmRefresh={handleConfirmRefresh}
+      />
     );
   }
 
   return (
     <main
       id="app"
-      className={`selection:bg-white/10 h-dvh w-dvw px-6 overflow-hidden flex flex-col gap-4 relative ${
-        theme === "dark" || theme === "system" ? "dark" : ""
+      className={`selection:bg-white/10 h-dvh w-dvw overflow-hidden flex flex-col relative px-6 gap-4 ${
+        resolvedTheme === "dark" ? "dark" : ""
       }`}
     >
-      {/* Custom Title Bar */}
       <TitleBar />
 
-      {/* Background Gradient */}
-      <div
-        className="fixed top-0 left-0 right-0 h-96 pointer-events-none transition-colors duration-1000 ease-in-out z-0 opacity-25"
-        style={{
-          backgroundColor: dynamicGradient ? gradientColor : "transparent",
-          maskImage: "linear-gradient(to bottom, black, transparent)",
-          WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
-        }}
-      />
+      <BackgroundGradient gradientColor={gradientColor} />
 
       <div className="flex flex-1 gap-6 min-h-0 relative z-10 pt-10">
-        {/* Sidebar */}
-        <div className="mt-2 pt-6 flex flex-col gap-10 w-16 shrink-0 h-full pb-32">
-          <div
-            id="user_profile"
-            onClick={() => selectProfile(null)} // Click to switch profile
-            className={`aspect-square w-full shrink-0 rounded-lg overflow-hidden ${
-              !activeProfile?.avatarPath &&
-              (activeProfile?.color || "bg-gray-600")
-            } flex items-center justify-center text-white font-bold cursor-pointer hover:scale-105 transition-transform relative`}
-            title={`Current: ${
-              activeProfile?.name || "User"
-            } (Click to switch)`}
-          >
-            {activeProfile?.avatarPath ? (
-              <img
-                src={convertFileSrc(activeProfile.avatarPath)}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              activeProfile?.name?.[0]?.toUpperCase()
-            )}
-
-            {/* Hover overlay hint? Optional */}
-          </div>
-          <div className="flex justify-center h-full">
-            <NavigationMenu
-              onImport={handleFolderImport}
-              isScanning={isScanning}
-            />
-          </div>
-        </div>
+        <SidebarSection
+          activeProfile={activeProfile}
+          onProfileClick={handleProfileClick}
+          onImport={handleFolderImport}
+          isScanning={isScanning}
+        />
 
         {/* Main Content */}
         <div className="flex-1 min-w-0 min-h-0 flex">
           <MainContent />
 
-          {/* Queue Menu */}
+          {/* Queue Menu / Track Detail Panel */}
           <div
             className={`pt-6 shrink-0 h-full min-h-0 overflow-hidden transition-all duration-300 ease-in-out z-40 ${
-              isQueueOpen ? "w-96 p-1" : "w-0 p-0"
+              sidePanel !== "none" ? "w-96 p-1" : "w-0 p-0"
             } ${isPlayerVisible ? "pb-39" : "pb-6"}`}
           >
             <QueueMenu />
+            <TrackDetailPanel />
+            <LyricsPanel />
           </div>
         </div>
       </div>
 
       {/* Music Controller */}
       <div
-        className={`fixed bottom-0 left-0 right-0 p-7 transition-all duration-300 ease-in-out z-50 pointer-events-none ${
+        className={`fixed bottom-0 left-0 right-0 p-6 transition-all duration-300 ease-in-out z-50 pointer-events-none ${
           isPlayerVisible
             ? "translate-y-0 opacity-100"
             : "translate-y-full opacity-0"
@@ -381,8 +308,20 @@ export default function App() {
       </div>
       <GlobalSearch />
 
-      {quitDialog}
-      <Toaster />
+      <AppDialogs
+        isQuitDialogOpen={isQuitDialogOpen}
+        setIsQuitDialogOpen={setIsQuitDialogOpen}
+        onConfirmQuit={handleQuitApp}
+        isCloseToTrayDialogOpen={isCloseToTrayDialogOpen}
+        setIsCloseToTrayDialogOpen={setIsCloseToTrayDialogOpen}
+        onConfirmCloseToTrayHide={handleCloseToTrayHide}
+        showProfileSwitchWarning={showProfileSwitchWarning}
+        setShowProfileSwitchWarning={setShowProfileSwitchWarning}
+        confirmProfileSwitch={confirmProfileSwitch}
+        isRefreshWarningOpen={isRefreshWarningOpen}
+        setIsRefreshWarningOpen={setIsRefreshWarningOpen}
+        handleConfirmRefresh={handleConfirmRefresh}
+      />
     </main>
   );
 }

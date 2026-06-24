@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { load } from "@tauri-apps/plugin-store";
+import { logger } from "@/lib/logger";
 
 // Lazy store initialization
-// const storePromise: Promise<Store> | null = null;
 import { invoke } from "@tauri-apps/api/core";
 import { useLibraryStore } from "./library-store";
 
@@ -19,16 +19,36 @@ export interface SidebarItem {
   hidden: boolean;
 }
 
+// Helper to get system theme preference
+const getSystemTheme = (): "dark" | "light" => {
+  if (typeof window !== "undefined" && window.matchMedia) {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return "dark"; // Fallback to dark
+};
+
+// Apply theme class to document
+const applyThemeClass = (theme: "dark" | "light" | "system") => {
+  const resolvedTheme = theme === "system" ? getSystemTheme() : theme;
+  document.documentElement.classList.remove("dark", "light");
+  document.documentElement.classList.add(resolvedTheme);
+  return resolvedTheme;
+};
+
 interface SettingsState {
   theme: "dark" | "light" | "system";
+  resolvedTheme: "dark" | "light"; // The actual applied theme
   dynamicGradient: boolean;
   libraryPaths: string[]; // persisted list of folders
   selectedDevice: string | null;
   audioDevices: { name: string }[];
   isLoading: boolean;
   currentProfileId: string | null;
-  crossfadeDuration: number; // Audio
 
+  crossfadeDuration: number; // Audio
+  // ... (rest)
   // Behavior
   closeToTray: boolean;
   scanOnStartup: boolean;
@@ -40,10 +60,25 @@ interface SettingsState {
   // Sorting
   songsSortKey: string;
   songsSortDirection: string;
+
+  albumsSortKey: string;
+  albumsSortDirection: string;
+  artistsSortKey: string;
+  artistsSortDirection: string;
+  playlistsSortKey: string;
+  playlistsSortDirection: string;
+
+  // Mini Player
+  miniPlayerStyle: "square" | "wide" | "bar";
+  miniPlayerPosition: "bottom-right" | "bottom-left" | "top-right" | "top-left";
+
+  // Media Keys
+  enableMediaKeys: boolean;
 }
 
 interface SettingsActions {
   setTheme: (theme: "dark" | "light" | "system") => void;
+  initSystemThemeListener: () => () => void; // Returns cleanup function
   setDynamicGradient: (enabled: boolean) => void;
 
   // Library Actions
@@ -70,13 +105,27 @@ interface SettingsActions {
 
   // Sorting Actions
   setSongsSort: (key: string, direction: string) => void;
+  setAlbumsSort: (key: string, direction: string) => void;
+  setArtistsSort: (key: string, direction: string) => void;
+  setPlaylistsSort: (key: string, direction: string) => void;
+
+  setMiniPlayerStyle: (style: "square" | "wide" | "bar") => void;
+  setMiniPlayerPosition: (
+    position: "bottom-right" | "bottom-left" | "top-right" | "top-left"
+  ) => void;
+  setEnableMediaKeys: (enabled: boolean) => Promise<void>;
 
   loadSettings: (profileId?: string) => Promise<void>;
 }
 
+/**
+ * Store for managing application settings (theme, library paths, audio config).
+ * Settings are persisted per-profile via the Tauri store plugin.
+ */
 export const useSettingsStore = create<SettingsState & SettingsActions>(
   (set, get) => ({
-    theme: "dark", // Default to dark since globals.css is dark-first
+    theme: "system", // Default to system preference
+    resolvedTheme: getSystemTheme(), // Initialize with current system theme
     dynamicGradient: true, // Default to on
     libraryPaths: [],
     selectedDevice: null,
@@ -87,6 +136,9 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
     closeToTray: false,
     scanOnStartup: false,
     autoplay: false,
+    miniPlayerStyle: "square",
+    miniPlayerPosition: "bottom-right",
+    enableMediaKeys: true,
 
     // Sidebar Defaults
     sidebarItems: [
@@ -95,21 +147,31 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
       { id: "songs", hidden: false },
       { id: "albums", hidden: false },
       { id: "playlists", hidden: false },
+      { id: "artists", hidden: false },
+      { id: "insights", hidden: false },
       { id: "settings", hidden: false },
     ],
     defaultPage: "home",
 
     setTheme: async (theme) => {
-      set({ theme });
-      if (theme === "system") {
-        document.documentElement.classList.remove("dark", "light");
-      } else {
-        document.documentElement.classList.remove("dark", "light");
-        document.documentElement.classList.add(theme);
-      }
+      const resolvedTheme = applyThemeClass(theme);
+      set({ theme, resolvedTheme });
       const store = await getStore();
       await store.set("theme", theme);
       await store.save();
+    },
+
+    initSystemThemeListener: () => {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = () => {
+        const { theme } = get();
+        if (theme === "system") {
+          const resolvedTheme = applyThemeClass("system");
+          set({ resolvedTheme });
+        }
+      };
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
     },
 
     setDynamicGradient: async (enabled) => {
@@ -127,11 +189,12 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
         const store = await getStore();
         await store.set("libraryPaths", newPaths);
         await store.save();
+        invoke("watch_paths", { folders: newPaths }).catch((e) =>
+          logger.error("Failed to watch paths", e)
+        );
 
         // Auto-scan the new path
         try {
-          // Define ScanStats locally or treat as any/unknown if interface not available globally
-          // But better to just return it.
           const stats = await invoke<{
             scanned_count: number;
             success_count: number;
@@ -140,7 +203,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
           await useLibraryStore.getState().fetchLibrary();
           return stats;
         } catch (e) {
-          console.error("Failed to scan new library path:", e);
+          logger.error("Failed to scan new library path", e);
           throw e; // Re-throw to allow caller to handle error toast
         }
       }
@@ -148,12 +211,28 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
     },
 
     removeLibraryPath: async (path) => {
+      // Remove from Database first
+      try {
+        await invoke("remove_location", { path });
+      } catch (e) {
+        logger.error("Failed to remove location from DB", e);
+      }
+
       const { libraryPaths } = get();
       const newPaths = libraryPaths.filter((p) => p !== path);
       set({ libraryPaths: newPaths });
+
       const store = await getStore();
       await store.set("libraryPaths", newPaths);
       await store.save();
+
+      // Update watcher
+      invoke("watch_paths", { folders: newPaths }).catch((e) =>
+        logger.error("Failed to watch paths", e)
+      );
+
+      // Refresh UI to reflect removal
+      useLibraryStore.getState().fetchLibrary();
     },
 
     setAudioDevice: async (device) => {
@@ -169,7 +248,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
         const devices = await invoke<{ name: string }[]>("audio_get_devices");
         set({ audioDevices: devices });
       } catch (e) {
-        console.error("Failed to refresh devices:", e);
+        logger.error("Failed to refresh devices", e);
       }
     },
 
@@ -220,6 +299,12 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
     // Sorting
     songsSortKey: "date_added",
     songsSortDirection: "desc",
+    albumsSortKey: "title",
+    albumsSortDirection: "asc",
+    artistsSortKey: "name",
+    artistsSortDirection: "asc",
+    playlistsSortKey: "name",
+    playlistsSortDirection: "asc",
 
     setSongsSort: async (key, direction) => {
       set({ songsSortKey: key, songsSortDirection: direction });
@@ -229,25 +314,60 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
       await store.save();
     },
 
-    loadSettings: async (profileId?: string) => {
-      // If no profileId provided, verify if we already have one loaded or just stop?
-      // Actually, we should REQUIRE profileId now, or use a default.
+    setAlbumsSort: async (key, direction) => {
+      set({ albumsSortKey: key, albumsSortDirection: direction });
+      const store = await getStore();
+      await store.set("albumsSortKey", key);
+      await store.set("albumsSortDirection", direction);
+      await store.save();
+    },
 
+    setArtistsSort: async (key, direction) => {
+      set({ artistsSortKey: key, artistsSortDirection: direction });
+      const store = await getStore();
+      await store.set("artistsSortKey", key);
+      await store.set("artistsSortDirection", direction);
+      await store.save();
+    },
+
+    setPlaylistsSort: async (key, direction) => {
+      set({ playlistsSortKey: key, playlistsSortDirection: direction });
+      const store = await getStore();
+      await store.set("playlistsSortKey", key);
+      await store.set("playlistsSortDirection", direction);
+      await store.save();
+    },
+
+    setMiniPlayerStyle: async (style) => {
+      set({ miniPlayerStyle: style });
+      const store = await getStore();
+      await store.set("miniPlayerStyle", style);
+      await store.save();
+    },
+
+    setMiniPlayerPosition: async (position) => {
+      set({ miniPlayerPosition: position });
+      const store = await getStore();
+      await store.set("miniPlayerPosition", position);
+      await store.save();
+    },
+    setEnableMediaKeys: async (enabled) => {
+      set({ enableMediaKeys: enabled });
+      const store = await getStore();
+      await store.set("enableMediaKeys", enabled);
+      await store.save();
+    },
+
+    loadSettings: async (profileId?: string) => {
       if (!profileId) {
-        // If called without ID (legacy/init), maybe do nothing until selectProfile is called?
-        // Or load "default" if we want a fallback.
         return;
       }
 
       set({ isLoading: true });
 
       try {
-        // Dynamic load
-        // Note: checking if load() creates a new instance or reuses.
-        // tauri-plugin-store manages instances by path.
         const store = await load(`settings_${profileId}.json`);
 
-        // Helper to get with default
         const getVal = async <T>(
           key: string
         ): Promise<T | null | undefined> => {
@@ -264,18 +384,44 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
         const scanOnStartup = await getVal<boolean>("scanOnStartup");
         const autoplay = await getVal<boolean>("autoplay");
 
-        const sidebarItems = await getVal<{ id: string; hidden: boolean }[]>(
+        let sidebarItems = await getVal<{ id: string; hidden: boolean }[]>(
           "sidebarItems"
         );
+
+        if (sidebarItems) {
+          sidebarItems = sidebarItems.map((item) =>
+            item.id === "settings" ? { ...item, hidden: false } : item
+          );
+        }
         const defaultPage = await getVal<string>("defaultPage");
 
         const songsSortKey = await getVal<string>("songsSortKey");
         const songsSortDirection = await getVal<string>("songsSortDirection");
 
-        // Update Store State
+        const albumsSortKey = await getVal<string>("albumsSortKey");
+        const albumsSortDirection = await getVal<string>("albumsSortDirection");
+        const artistsSortKey = await getVal<string>("artistsSortKey");
+        const artistsSortDirection = await getVal<string>(
+          "artistsSortDirection"
+        );
+        const playlistsSortKey = await getVal<string>("playlistsSortKey");
+        const playlistsSortDirection = await getVal<string>(
+          "playlistsSortDirection"
+        );
+        const miniPlayerStyle = await getVal<"square" | "wide" | "bar">(
+          "miniPlayerStyle"
+        );
+        const miniPlayerPosition = await getVal<
+          "bottom-right" | "bottom-left" | "top-right" | "top-left"
+        >("miniPlayerPosition");
+        const enableMediaKeys = await getVal<boolean>("enableMediaKeys");
+
+        const themeValue = theme ?? "system";
+        const resolvedTheme = applyThemeClass(themeValue);
         set({
-          currentProfileId: profileId, // <--- FIX: valid profile ID set here
-          theme: theme ?? "dark",
+          currentProfileId: profileId,
+          theme: themeValue,
+          resolvedTheme,
           dynamicGradient: dynamicGradient ?? true,
           libraryPaths: libraryPaths ?? [],
           selectedDevice: selectedDevice ?? null,
@@ -289,25 +435,24 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
             { id: "songs", hidden: false },
             { id: "albums", hidden: false },
             { id: "playlists", hidden: false },
+            { id: "artists", hidden: false },
+            { id: "insights", hidden: false },
             { id: "settings", hidden: false },
           ],
           defaultPage: defaultPage ?? "home",
           songsSortKey: songsSortKey ?? "date_added",
           songsSortDirection: songsSortDirection ?? "desc",
+          albumsSortKey: albumsSortKey ?? "title",
+          albumsSortDirection: albumsSortDirection ?? "asc",
+          artistsSortKey: artistsSortKey ?? "name",
+          artistsSortDirection: artistsSortDirection ?? "asc",
+          playlistsSortKey: playlistsSortKey ?? "name",
+          playlistsSortDirection: playlistsSortDirection ?? "asc",
+          miniPlayerStyle: miniPlayerStyle ?? "square",
+          miniPlayerPosition: miniPlayerPosition ?? "bottom-right",
+          enableMediaKeys: enableMediaKeys ?? true,
           isLoading: false,
         });
-
-        // Apply Side Effects
-        if (theme) {
-          if (theme !== "system") {
-            document.documentElement.classList.remove("dark", "light");
-            document.documentElement.classList.add(theme);
-          } else {
-            document.documentElement.classList.remove("dark", "light");
-            // System theme logic usually handled by CSS media query or separate listener,
-            // but here we just clean up manual classes
-          }
-        }
 
         if (selectedDevice) {
           await invoke("audio_set_device", { deviceName: selectedDevice });
@@ -318,21 +463,15 @@ export const useSettingsStore = create<SettingsState & SettingsActions>(
           });
         }
 
-        get().refreshAudioDevices();
+        invoke("watch_paths", { folders: libraryPaths ?? [] }).catch((e) =>
+          logger.error("Failed to watch paths on settings load", e)
+        );
 
-        // Update global store reference for future saves
-        // Warning: 'storePromise' global var in this file needs to be updated or removed.
-        // We should attach the current store instance to the state or a closure variable.
-        // Let's update the global `getStore` function implementation below.
+        get().refreshAudioDevices();
       } catch (e) {
-        console.error("Failed to load settings:", e);
+        logger.error("Failed to load settings", e);
         set({ isLoading: false });
       }
     },
   })
 );
-
-// Helper to get the CURRENT active store file.
-// We need to track which file is active.
-// Ideally, we pass the profileId to every action, OR we store `activeStore` in the state.
-// Since actions are closures, we can store it in the state.

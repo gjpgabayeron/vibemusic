@@ -1,33 +1,87 @@
+use log::info;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 
+/// Shared state for the active profile.
 pub struct ProfileState(pub Mutex<Option<String>>);
 
+/// Cache of database helpers keyed by profile ID.
+/// Avoids opening a new SQLite connection per command invocation.
+pub struct DbCache(pub Mutex<HashMap<Option<String>, crate::database::DbHelper>>);
+
+/// Sets the active profile ID in the application state.
 #[tauri::command]
-pub fn set_active_profile(app: AppHandle, profile_id: Option<String>) {
+pub fn set_active_profile(app: AppHandle, profile_id: Option<String>) -> Result<(), String> {
+    info!("Setting active profile to: {:?}", profile_id);
     let state = app.state::<ProfileState>();
-    let mut current = state.0.lock().unwrap();
+    let mut current = state.0.lock().map_err(|e| format!("Profile state lock poisoned: {}", e))?;
     *current = profile_id;
+    Ok(())
 }
 
 pub fn get_library_db_path(app: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-
-    // Default path
     let mut db_name = "library.db".to_string();
-
-    // Check state if available
     if let Some(state) = app.try_state::<ProfileState>() {
-        let current = state.0.lock().unwrap();
+        let current = state.0.lock().map_err(|e| format!("Profile state lock poisoned: {}", e))?;
         if let Some(id) = &*current {
             db_name = format!("library_{}.db", id);
         }
     }
-
     Ok(app_data_dir.join(db_name))
 }
 
+/// Opens the library database and calls the given function with a DbHelper reference.
+/// Uses a connection cache keyed by profile ID to avoid re-opening connections.
+pub fn with_db<F, T>(app: &AppHandle, f: F) -> Result<T, String>
+where
+    F: FnOnce(&crate::database::DbHelper) -> Result<T, rusqlite::Error>,
+{
+    let profile_id = app.state::<ProfileState>().0.lock()
+        .map_err(|e| format!("Profile state lock poisoned: {}", e))?
+        .clone();
+    let db_path = get_library_db_path(app)?;
+
+    let cache = app.state::<DbCache>();
+    let mut cache = cache.0.lock()
+        .map_err(|e| format!("DbCache lock poisoned: {}", e))?;
+    if !cache.contains_key(&profile_id) {
+        let db = crate::database::DbHelper::new(&db_path)
+            .map_err(|e| format!("Failed to open database connection: {}", e))?;
+        cache.insert(profile_id.clone(), db);
+    }
+    let db = cache.get(&profile_id)
+        .ok_or("Database not found in cache after insert")?;
+
+    f(db).map_err(|e| format!("Database operation failed: {}", e))
+}
+
+pub fn with_db_mut<F, T>(app: &AppHandle, f: F) -> Result<T, String>
+where
+    F: FnOnce(&mut crate::database::DbHelper) -> Result<T, rusqlite::Error>,
+{
+    let profile_id = app.state::<ProfileState>().0.lock()
+        .map_err(|e| format!("Profile state lock poisoned: {}", e))?
+        .clone();
+    let db_path = get_library_db_path(app)?;
+
+    let cache = app.state::<DbCache>();
+    let mut cache = cache.0.lock()
+        .map_err(|e| format!("DbCache lock poisoned: {}", e))?;
+    if !cache.contains_key(&profile_id) {
+        let db = crate::database::DbHelper::new(&db_path)
+            .map_err(|e| format!("Failed to open database connection: {}", e))?;
+        cache.insert(profile_id.clone(), db);
+    }
+    let db = cache.get_mut(&profile_id)
+        .ok_or("Database not found in cache after insert")?;
+
+    f(db).map_err(|e| format!("Database operation failed: {}", e))
+}
+
+/// Deletes all data associated with a profile (DB, settings, avatar).
 #[tauri::command]
 pub fn delete_profile_data(app: AppHandle, profile_id: String) -> Result<(), String> {
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
@@ -45,11 +99,28 @@ pub fn delete_profile_data(app: AppHandle, profile_id: String) -> Result<(), Str
             .map_err(|e| format!("Failed to delete settings: {}", e))?;
     }
 
-    // 3. Delete Store .lock? (Optional, store plugin might leave lock files)
+    // 3. Delete Avatar
+    let avatars_dir = app_data_dir.join("avatars");
+    if avatars_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&avatars_dir) {
+            for entry in entries.flatten() {
+                 let path = entry.path();
+                 if path.is_file() {
+                      if let Some(stem) = path.file_stem() {
+                          if stem.to_string_lossy() == profile_id {
+                                info!("Deleting profile avatar: {:?}", path);
+                               let _ = std::fs::remove_file(path);
+                          }
+                      }
+                 }
+            }
+        }
+    }
 
     Ok(())
 }
 
+/// Uploads a profile avatar from a file path.
 #[tauri::command]
 pub fn upload_profile_avatar(
     app: AppHandle,
@@ -72,7 +143,8 @@ pub fn upload_profile_avatar(
     let extension = source_path
         .extension()
         .and_then(|e| e.to_str())
-        .unwrap_or("jpg"); // Default to jpg if unknown, though we should validate
+        .filter(|e| ["jpg", "jpeg", "png", "webp"].contains(&e.to_lowercase().as_str()))
+        .unwrap_or("jpg");
 
     let target_filename = format!("{}.{}", profile_id, extension);
     let target_path = avatars_dir.join(&target_filename);
@@ -82,6 +154,7 @@ pub fn upload_profile_avatar(
     Ok(target_path.to_string_lossy().to_string())
 }
 
+/// Saves raw image bytes as the profile avatar.
 #[tauri::command]
 pub fn save_profile_avatar_bytes(
     app: AppHandle,

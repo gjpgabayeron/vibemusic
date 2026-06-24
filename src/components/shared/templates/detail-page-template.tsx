@@ -1,0 +1,82 @@
+import { useRef } from "react";
+import { CompactPageHeader } from "@/components/shared/compact-page-header";
+import { cn } from "@/lib/utils";
+
+interface DetailPageTemplateProps {
+  title: string;
+  subtitle?: string;
+  artworkPath?: string | null;
+  onBack: () => void;
+  onPlay?: () => void;
+  children:
+    | React.ReactNode
+    | ((
+        onScroll: (e: React.UIEvent<HTMLDivElement>) => void
+      ) => React.ReactNode);
+  className?: string;
+  // Expose scroll handler if needed by parent, but ideally passed to children
+  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+}
+
+export function DetailPageTemplate({
+  title,
+  subtitle,
+  artworkPath,
+  onBack,
+  onPlay,
+  children,
+  className,
+  onScroll,
+}: DetailPageTemplateProps) {
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    // Call external handler if provided
+    onScroll?.(e);
+
+    const scrollTop = e.currentTarget.scrollTop;
+    const threshold = 300; // Show compact header after 300px
+    const header = headerRef.current;
+
+    if (header) {
+      if (scrollTop > threshold) {
+        if (header.dataset.visible !== "true") {
+          header.style.opacity = "1";
+          header.dataset.visible = "true";
+        }
+      } else {
+        if (header.dataset.visible !== "false") {
+          header.style.opacity = "0";
+          header.dataset.visible = "false";
+        }
+      }
+    }
+  };
+
+  return (
+    <div
+      className={cn(
+        "flex-1 min-w-0 h-full flex flex-col overflow-hidden relative",
+        className
+      )}
+    >
+      <CompactPageHeader
+        ref={headerRef}
+        title={title}
+        subtitle={subtitle}
+        artworkPath={artworkPath}
+        onBack={onBack}
+        onPlay={onPlay}
+      />
+      {
+        typeof children === "function"
+          ? (
+              children as (
+                onScroll: (e: React.UIEvent<HTMLDivElement>) => void
+              ) => React.ReactNode
+            )(handleScroll)
+          : children // Fallback if user manages scroll differently
+      }
+    </div>
+  );
+}

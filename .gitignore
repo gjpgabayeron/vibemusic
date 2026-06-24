@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
+landing/dist
 dist-ssr
 *.local
 
@@ -25,3 +26,7 @@ dist-ssr
 # Security
 *.key
 .tauri/
+
+# AI Agents
+.opencode/*
+.claude/*

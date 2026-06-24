@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SettingsSidebar } from "./settings/settings-sidebar";
 import { SettingsGeneral } from "./settings/settings-general";
 import { SettingsAppearance } from "./settings/settings-appearance";
 import { SettingsLibrary } from "./settings/settings-library";
 import { SettingsAudio } from "./settings/settings-audio";
 import { SettingsAbout } from "./settings/settings-about";
-import { useEffect } from "react";
 
 import { useCurrentPage } from "@/stores/navigation-store";
 

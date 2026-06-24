@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-// import { cn } from "@/lib/utils";
+
 import { useUpdateStore } from "@/stores/update-store";
 
 export function TitleBar() {
@@ -21,12 +21,15 @@ export function TitleBar() {
 
     checkMaximized();
 
-    const unlistenResize = appWindow.onResized(async () => {
-      checkMaximized();
-    });
-
+    const init = async () => {
+      const unlisten = await appWindow.onResized(async () => {
+        checkMaximized();
+      });
+      return unlisten;
+    };
+    const promise = init();
     return () => {
-      unlistenResize.then((f) => f());
+      promise.then((f) => f());
     };
   }, [appWindow]);
 
@@ -39,7 +42,7 @@ export function TitleBar() {
   };
 
   return (
-    <div className="h-10 bg-background/25 backdrop-blur-md flex items-center justify-between pl-6 pr-2 select-none fixed top-0 left-0 right-0 z-50 border-b border-white/5 overflow-hidden">
+    <div className="h-10 bg-background/25 backdrop-blur-md flex items-center justify-between pl-6 pr-2 select-none fixed top-0 left-0 right-0 z-50 border-b border-border overflow-hidden">
       {/* Drag Region Layer */}
       <div
         className="absolute inset-0 w-full h-full z-0"
@@ -49,7 +52,7 @@ export function TitleBar() {
       {/* Content Layer */}
       <div className="flex items-center gap-2 pointer-events-none relative z-10">
         <div className="w-3 h-3 rounded-full bg-indigo-500" />
-        <span className="text-xs font-medium text-white/50">Vibe</span>
+        <span className="text-xs font-medium text-muted-foreground">Vibe</span>
         {channel === "dev" && (
           <span className="px-1.5 py-0.5 text-[10px] font-bold bg-orange-500/10 text-orange-500 border border-orange-500/20 rounded ml-1">
             DEV
@@ -61,8 +64,9 @@ export function TitleBar() {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => appWindow.minimize()}
-              className="p-2 hover:bg-white/10 rounded-md transition-colors text-gray-400 hover:text-white cursor-pointer"
+              className="p-2 hover:bg-accent rounded-md transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <Minus size={14} />
             </button>
@@ -73,8 +77,9 @@ export function TitleBar() {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={handleMaximize}
-              className="p-2 hover:bg-white/10 rounded-md transition-colors text-gray-400 hover:text-white cursor-pointer"
+              className="p-2 hover:bg-accent rounded-md transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
             >
               {isMaximized ? <Copy size={14} /> : <Square size={14} />}
             </button>
@@ -87,15 +92,16 @@ export function TitleBar() {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={() => appWindow.close()}
-              className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded-md transition-colors text-gray-400 cursor-pointer"
+              className="p-2 hover:bg-destructive/20 hover:text-destructive rounded-md transition-colors text-muted-foreground cursor-pointer"
             >
               <X size={14} />
             </button>
           </TooltipTrigger>
           <TooltipContent
             side="bottom"
-            className="bg-red-900 border-red-800 text-white"
+            className="bg-red-900 border-red-800 text-white [&_svg]:fill-red-900 [&_svg]:bg-red-900"
           >
             Close
           </TooltipContent>

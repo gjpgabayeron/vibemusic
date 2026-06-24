@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -22,7 +22,7 @@ function Command({
       data-slot="command"
       className={cn(
         "bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-md",
-        className
+        className,
       )}
       {...props}
     />
@@ -65,28 +65,38 @@ function CommandDialog({
   );
 }
 
-const CommandInput = React.forwardRef<
-  React.ElementRef<typeof CommandPrimitive.Input>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
->(({ className, ...props }, ref) => (
+const CommandInput = ({
+  className,
+  value,
+  onValueChange,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> & {
+  ref?: React.Ref<React.ElementRef<typeof CommandPrimitive.Input>>;
+}) => (
   <div
     data-slot="command-input-wrapper"
-    className="flex h-9 items-center gap-2 border-b px-3"
+    className="flex h-12 items-center gap-2 border-b px-3"
   >
     <SearchIcon className="size-4 shrink-0 opacity-50" />
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
         "flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
-        className
+        className,
       )}
+      value={value}
+      onValueChange={onValueChange}
       {...props}
     />
+    {value && (
+      <X
+        className="size-4 shrink-0 opacity-50 hover:opacity-100 cursor-pointer"
+        onClick={() => onValueChange?.("")}
+      />
+    )}
   </div>
-));
-
-CommandInput.displayName = CommandPrimitive.Input.displayName;
-
+);
 CommandInput.displayName = CommandPrimitive.Input.displayName;
 
 function CommandList({
@@ -97,8 +107,8 @@ function CommandList({
     <CommandPrimitive.List
       data-slot="command-list"
       className={cn(
-        "max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto",
-        className
+        "max-h-75 scroll-py-1 overflow-x-hidden overflow-y-auto",
+        className,
       )}
       {...props}
     />
@@ -126,7 +136,7 @@ function CommandGroup({
       data-slot="command-group"
       className={cn(
         "text-foreground **:[[cmdk-group-heading]]:text-muted-foreground overflow-hidden p-1 **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium",
-        className
+        className,
       )}
       {...props}
     />
@@ -154,8 +164,8 @@ function CommandItem({
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className
+        "data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 group",
+        className,
       )}
       {...props}
     />
@@ -171,7 +181,7 @@ function CommandShortcut({
       data-slot="command-shortcut"
       className={cn(
         "text-muted-foreground ml-auto text-xs tracking-widest",
-        className
+        className,
       )}
       {...props}
     />

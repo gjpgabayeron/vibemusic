@@ -1,7 +1,11 @@
+import { useRef } from "react";
 import { Track } from "@/lib/api";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Play, Pause } from "lucide-react";
+import { formatDuration } from "@/lib/format";
+import { ScrollingText } from "@/components/shared/scrolling-text";
+import { ArtistLinks } from "@/components/shared/artist-links";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -22,6 +26,7 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
   const resume = useAudioStore((s) => s.resume);
   const queue = useAudioStore((s) => s.queue);
   const status = usePlayerStatus();
+  const artistContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     attributes,
@@ -44,81 +49,81 @@ export default function QueueItem({ track, isActive }: QueueItemProps) {
     if (isActive) {
       if (status === "playing") {
         pause();
-      } else {
+      } else if (status === "paused") {
         resume();
+      } else {
+        play(track, queue);
       }
     } else {
-      // Play this track from the current queue
-      // We need to find the queue index, or allow play to take an index?
-      // Actually play(track) will reset queue if we don't pass one.
-      // But we just want to jump to it.
-      // audioStore.play implementation:
-      // if newQueue passed, use it. else queue=[track].
-      // We should pass the *current* queue to preserve it!
       play(track, queue);
     }
-  };
-
-  const formatDuration = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   return (
     <ContextMenu>
       <ContextMenuTrigger>
-        <div
+        <button
+          type="button"
           ref={setNodeRef}
           style={style}
           onClick={handlePlayClick}
-          className={`flex items-center gap-3 p-2 rounded-md group hover:bg-white/5 cursor-pointer ${
-            isActive ? "bg-white/10" : ""
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              handlePlayClick(e as unknown as React.MouseEvent);
+            }
+          }}
+          className={`flex items-center gap-3 p-2 rounded-md group hover:bg-accent/10 cursor-pointer w-full text-left ${
+            isActive ? "bg-accent/20" : ""
           }`}
         >
           {/* Drag Handle - Always visible now */}
           <div
+            aria-label="Drag to reorder"
             {...attributes}
             {...listeners}
             onClick={(e) => e.stopPropagation()}
-            className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-white transition-opacity"
+            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-opacity shrink-0"
           >
             <GripVertical size={16} />
           </div>
 
           {/* Type/Status Indicator */}
-          {
-            isActive ? (
-              <div className="text-purple-400">
-                {status === "playing" ? (
-                  <Pause size={16} fill="currentColor" />
-                ) : (
-                  <Play size={16} fill="currentColor" />
-                )}
-              </div>
-            ) : // Placeholder or empty to align?
-            // Maybe show nothing or music note?
-            // Existing design didn't have icon.
-            null
-            // <div className="w-4 h-4" />
-          }
+          {isActive ? (
+            <div className="text-primary shrink-0">
+              {status === "playing" ? (
+                <Pause size={16} fill="currentColor" />
+              ) : (
+                <Play size={16} fill="currentColor" />
+              )}
+            </div>
+          ) : null}
 
           <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <p
-              className={`text-sm font-medium truncate ${
-                isActive ? "text-purple-400" : "text-white"
+            <div
+              className={`text-sm font-medium w-full ${
+                isActive ? "text-primary font-bold" : "text-foreground"
               }`}
             >
-              {track.title}
-            </p>
-            <p className="text-xs text-neutral-400 truncate">
-              {track.artist || "Unknown Artist"}
-            </p>
+              <ScrollingText>{track.title}</ScrollingText>
+            </div>
+            <div
+              ref={artistContainerRef}
+              className="relative overflow-hidden whitespace-nowrap text-xs text-muted-foreground w-full"
+            >
+              <span className="inline-block pr-8">
+                <ArtistLinks
+                  names={track.artist_names}
+                  ids={track.artist_ids}
+                  fallbackName={track.artist}
+                  fallbackId={track.artist_id}
+                />
+              </span>
+            </div>
           </div>
-          <div className="text-xs text-neutral-500 font-mono">
+          <div className="text-xs text-muted-foreground font-mono shrink-0">
             {formatDuration(track.duration_ms)}
           </div>
-        </div>
+        </button>
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onSelect={() => removeFromQueue(track.id)}>

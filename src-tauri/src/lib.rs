@@ -4,27 +4,31 @@ mod artwork;
 mod audio;
 mod database;
 mod error;
-mod ffmpeg;
+mod metadata;
 mod library;
 mod playlists;
 mod profile;
 mod scanner;
 mod updater;
+mod watcher;
+mod lyrics;
+mod stats;
+mod install_format;
+
 
 use audio::{AudioEngine, AudioState};
-use profile::ProfileState;
+use profile::{DbCache, ProfileState};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
+
+/// Entry point for the Tauri application.
+/// Initializes plugins, state, and runs the application loop.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_process::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(
@@ -42,6 +46,12 @@ pub fn run() {
                             sql: include_str!("../migrations/002_add_playlist_artwork.sql"),
                             kind: tauri_plugin_sql::MigrationKind::Up,
                         },
+                        tauri_plugin_sql::Migration {
+                            version: 3,
+                            description: "add_track_title_index",
+                            sql: include_str!("../migrations/003_add_track_title_index.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
+                        },
                     ],
                 )
                 .build(),
@@ -54,15 +64,16 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_log::Builder::default()
+                .clear_targets()
                 .target(tauri_plugin_log::Target::new(
                     tauri_plugin_log::TargetKind::LogDir {
                         file_name: Some("vibemusic".to_string()),
                     },
                 ))
-                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(20))
                 .max_file_size(2_000_000) // 2MB
                 .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
-                .level(log::LevelFilter::Error)
+                .level(log::LevelFilter::Debug)
                 .build(),
         )
         .setup(move |app| {
@@ -76,12 +87,13 @@ pub fn run() {
             // Manage state manually since we are in setup
             app.manage(state);
             app.manage(ProfileState(Mutex::new(None)));
+            app.manage(DbCache(Mutex::new(HashMap::new())));
+            app.manage(updater::PendingUpdate::default());
+            app.manage(watcher::init());
+            app.manage(install_format::detect_install_format());
 
             // Initialize media events
             engine.init_media_events(app.handle().clone());
-
-            // Start background progress tracking
-            audio::start_progress_tracking(app.handle().clone(), engine);
 
             // System Tray Setup
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -89,11 +101,14 @@ pub fn run() {
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
             let _tray = TrayIconBuilder::with_id("tray")
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(app.default_window_icon().expect("window icon must be configured").clone())
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit" => {
+                        if let Some(state) = app.try_state::<AudioState>() {
+                            state.0.stop();
+                        }
                         app.exit(0);
                     }
                     "show" => {
@@ -122,17 +137,24 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
+            // Library
             library::get_all_tracks,
             library::get_all_albums,
             library::get_album_by_id,
             library::get_album_tracks,
             library::delete_track,
+            library::remove_location,
             scanner::get_file_metadata,
             scanner::scan_folder,
             scanner::scan_music_library,
             scanner::check_files_exist,
             scanner::prune_library,
+            // Artist commands
+            library::get_all_artists,
+            library::get_artist_by_id,
+            library::get_artist_albums,
+            library::get_artist_tracks,
+            library::search,
             // Audio commands
             audio::audio_play,
             audio::audio_pause,
@@ -152,6 +174,7 @@ pub fn run() {
             playlists::get_playlist_tracks,
             playlists::add_track_to_playlist,
             playlists::remove_track_from_playlist,
+            playlists::reorder_playlist,
             // Profile
             profile::set_active_profile,
             profile::delete_profile_data,
@@ -159,8 +182,30 @@ pub fn run() {
             profile::save_profile_avatar_bytes,
             // Updater
             updater::check_update,
-            updater::install_update
+            updater::get_latest_release,
+            updater::download_update,
+            updater::install_update,
+            updater::download_and_install_update,
+            // Watcher
+            watcher::watch_paths,
+            // Metadata
+            metadata::probe_file,
+            // Lyrics
+            lyrics::get_lyrics,
+            // Stats
+            stats::record_playback,
+            stats::get_stats,
+            // Install format
+            install_format::get_install_format,
+            // App
+            quit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn quit_app(state: tauri::State<AudioState>, app: tauri::AppHandle) {
+    state.0.stop();
+    app.exit(0);
 }

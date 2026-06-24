@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS tracks (
     channels INTEGER,
     genre TEXT,
     year INTEGER,
+    modification_time INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE SET NULL,
@@ -98,3 +99,5 @@ CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks(playl
 CREATE INDEX IF NOT EXISTS idx_playlist_tracks_track ON playlist_tracks(track_id);
 CREATE INDEX IF NOT EXISTS idx_play_history_track ON play_history(track_id);
 CREATE INDEX IF NOT EXISTS idx_play_history_played_at ON play_history(played_at);
+CREATE INDEX IF NOT EXISTS idx_tracks_created_at ON tracks(created_at);
+CREATE INDEX IF NOT EXISTS idx_albums_artist_year ON albums(artist_id, year DESC);

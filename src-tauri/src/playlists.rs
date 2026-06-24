@@ -1,6 +1,4 @@
-use crate::database::DbHelper;
-use crate::profile::get_library_db_path; // Import helper
-                                         // use crate::error::AppError;
+use crate::profile::{with_db, with_db_mut};
 use serde::{Deserialize, Serialize};
 use tauri::{command, AppHandle};
 
@@ -14,28 +12,20 @@ pub struct Playlist {
     pub created_at: String,
 }
 
-// ... (Commented out code preserved)
-
-// Commands will be implemented after updating DbHelper
+// Commands follow below
 #[command]
+/// Creates a new playlist with the given name and optional description.
 pub fn create_playlist(
     app: AppHandle,
     name: String,
     description: Option<String>,
 ) -> Result<Playlist, String> {
-    let db_path = get_library_db_path(&app)?;
-    let db = DbHelper::new(&db_path).map_err(|e| e.to_string())?;
-
-    db.create_playlist(name, description)
-        .map_err(|e| e.to_string())
+    with_db(&app, |db| db.create_playlist(name, description))
 }
 
 #[command]
 pub fn delete_playlist(app: AppHandle, id: i64) -> Result<(), String> {
-    let db_path = get_library_db_path(&app)?;
-    let db = DbHelper::new(&db_path).map_err(|e| e.to_string())?;
-
-    db.delete_playlist(id).map_err(|e| e.to_string())
+    with_db(&app, |db| db.delete_playlist(id))
 }
 
 #[command]
@@ -46,19 +36,12 @@ pub fn update_playlist(
     description: Option<String>,
     artwork_path: Option<String>,
 ) -> Result<(), String> {
-    let db_path = get_library_db_path(&app)?;
-    let db = DbHelper::new(&db_path).map_err(|e| e.to_string())?;
-
-    db.update_playlist(id, name, description, artwork_path)
-        .map_err(|e| e.to_string())
+    with_db(&app, |db| db.update_playlist(id, name, description, artwork_path))
 }
 
 #[command]
 pub fn get_playlists(app: AppHandle) -> Result<Vec<Playlist>, String> {
-    let db_path = get_library_db_path(&app)?;
-    let db = DbHelper::new(&db_path).map_err(|e| e.to_string())?;
-
-    db.get_playlists().map_err(|e| e.to_string())
+    with_db(&app, |db| db.get_playlists())
 }
 
 #[command]
@@ -66,10 +49,7 @@ pub fn get_playlist_tracks(
     app: AppHandle,
     id: i64,
 ) -> Result<Vec<crate::library::LibraryTrack>, String> {
-    let db_path = get_library_db_path(&app)?;
-    let db = DbHelper::new(&db_path).map_err(|e| e.to_string())?;
-
-    db.get_playlist_tracks(id).map_err(|e| e.to_string())
+    with_db(&app, |db| db.get_playlist_tracks(id))
 }
 
 #[command]
@@ -78,11 +58,7 @@ pub fn add_track_to_playlist(
     playlist_id: i64,
     track_id: i64,
 ) -> Result<(), String> {
-    let db_path = get_library_db_path(&app)?;
-    let db = DbHelper::new(&db_path).map_err(|e| e.to_string())?;
-
-    db.add_track_to_playlist(playlist_id, track_id)
-        .map_err(|e| e.to_string())
+    with_db(&app, |db| db.add_track_to_playlist(playlist_id, track_id))
 }
 
 #[command]
@@ -91,9 +67,14 @@ pub fn remove_track_from_playlist(
     playlist_id: i64,
     track_id: i64,
 ) -> Result<(), String> {
-    let db_path = get_library_db_path(&app)?;
-    let db = DbHelper::new(&db_path).map_err(|e| e.to_string())?;
+    with_db(&app, |db| db.remove_track_from_playlist(playlist_id, track_id))
+}
 
-    db.remove_track_from_playlist(playlist_id, track_id)
-        .map_err(|e| e.to_string())
+#[command]
+pub fn reorder_playlist(
+    app: AppHandle,
+    id: i64,
+    new_order: Vec<i64>,
+) -> Result<(), String> {
+    with_db_mut(&app, |db| db.reorder_playlist(id, new_order))
 }

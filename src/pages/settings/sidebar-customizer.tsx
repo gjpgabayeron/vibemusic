@@ -47,32 +47,35 @@ function SortableItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/5 group"
+      className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border border-border group"
     >
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab hover:text-white text-gray-500"
+        className="cursor-grab hover:text-foreground text-muted-foreground"
       >
         <GripVertical size={16} />
       </div>
       <span className="flex-1 font-medium capitalize">
         {labels[item.id] || item.id}
       </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onToggle}
-        className={item.hidden ? "text-gray-600" : "text-white"}
-      >
-        {item.hidden ? <EyeOff size={16} /> : <Eye size={16} />}
-      </Button>
+      {item.id !== "settings" && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggle}
+          className={item.hidden ? "text-muted-foreground" : "text-foreground"}
+        >
+          {item.hidden ? <EyeOff size={16} /> : <Eye size={16} />}
+        </Button>
+      )}
     </div>
   );
 }
 
 export function SidebarCustomizer() {
-  const { sidebarItems, setSidebarItems } = useSettingsStore();
+  const sidebarItems = useSettingsStore((s) => s.sidebarItems);
+  const setSidebarItems = useSettingsStore((s) => s.setSidebarItems);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -92,6 +95,7 @@ export function SidebarCustomizer() {
   };
 
   const handleToggle = (id: string) => {
+    if (id === "settings") return; // Prevent hiding settings
     const newItems = sidebarItems.map((item) =>
       item.id === id ? { ...item, hidden: !item.hidden } : item
     );

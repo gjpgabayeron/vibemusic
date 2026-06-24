@@ -5,6 +5,8 @@ import { useSettingsStore } from "./settings-store";
 import { useLibraryStore } from "./library-store";
 import { toast } from "sonner";
 import { Track } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { useStatsStore } from "./stats-store";
 
 // --- Types ---
 type PlaybackStatus = "playing" | "paused" | "stopped" | "loading";
@@ -34,7 +36,8 @@ interface AudioState {
   currentIndex: number;
   shuffle: boolean;
   repeat: RepeatMode;
-  isQueueOpen: boolean;
+
+  sidePanel: "none" | "queue" | "track-details" | "lyrics";
 
   // Progress State (updated frequently)
   position: number;
@@ -45,6 +48,7 @@ interface AudioState {
   _isDraggingSlider: boolean;
   _listenersInitialized: boolean;
   _lastProgressUpdate: number; // For throttling
+  _lastSeekTime: number; // To ignore legacy progress events after seeking
   _isTransitioning: boolean;
 }
 
@@ -59,10 +63,11 @@ interface AudioActions {
   previous: () => Promise<void>;
   seek: (positionMs: number) => Promise<void>;
   setVolume: (volume: number) => Promise<void>;
-  toggleMute: () => void;
+  toggleMute: () => Promise<void>;
 
   // Queue Actions
   toggleQueue: () => void;
+  setSidePanel: (view: "none" | "queue" | "track-details" | "lyrics") => void;
   toggleShuffle: () => void;
   toggleRepeat: () => void;
   addToQueue: (track: Track) => void;
@@ -82,6 +87,10 @@ interface AudioActions {
 type AudioStore = AudioState & AudioActions;
 
 // --- Store Implementation ---
+
+/**
+ * Store for managing audio playback, queue, and player state.
+ */
 export const useAudioStore = create<AudioStore>((set, get) => {
   // Internal helper for playing a track
   const playInternal = async (track: Track) => {
@@ -91,19 +100,35 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         title: track.title,
         artist: track.artist,
         album: track.album,
-        cover: track.artwork_path,
+        artworkPath: track.artwork_path,
       });
     } catch (e) {
-      console.error("Failed to play:", e);
+      logger.error("Failed to play", e);
       set({ status: "stopped" });
     }
   };
 
-  // Internal next handler
+  // Helper to record stats
+  const checkAndRecordStats = (
+    track: Track | null,
+    durationMs: number,
+    positionMs: number,
+  ) => {
+    if (!track) return;
+    // Rule: Record if listened for at least 30 seconds OR 50% of the song
+    const threshold = Math.min(30000, durationMs * 0.5);
+    if (positionMs >= threshold) {
+      useStatsStore.getState().recordPlayback(track.id, positionMs);
+    }
+  };
+
   // Internal next handler
   const handleNext = async () => {
     const state = get();
-    console.log("[handleNext] Start", {
+    // Record stats for the finishing track
+    checkAndRecordStats(state.currentTrack, state.duration, state.position);
+
+    logger.debug("[handleNext] Start", {
       queue: state.queue.length,
       currentIndex: state.currentIndex,
       repeat: state.repeat,
@@ -111,7 +136,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     });
 
     if (state.queue.length === 0) {
-      console.log("[handleNext] Queue empty -> Stop");
+      logger.debug("[handleNext] Queue empty -> Stop");
       // Don't clear currentTrack so UI can still show last played song
       set({ status: "stopped", position: 0 });
       await invoke("audio_stop");
@@ -119,7 +144,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     }
 
     if (state.repeat === "one") {
-      console.log("[handleNext] Repeat One -> Replay");
+      logger.debug("[handleNext] Repeat One -> Replay");
       if (state.currentTrack) {
         set({ position: 0 });
         await playInternal(state.currentTrack);
@@ -133,10 +158,10 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     // Handle end of queue
     if (nextIndex >= state.queue.length) {
       if (state.repeat === "all") {
-        console.log("[handleNext] Repeat All -> Loop to start");
+        logger.debug("[handleNext] Repeat All -> Loop to start");
         nextIndex = 0;
       } else {
-        console.log("[handleNext] End of queue -> Stop");
+        logger.debug("[handleNext] End of queue -> Stop");
         set({ status: "stopped", position: 0 });
         await invoke("audio_stop");
         return;
@@ -144,7 +169,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     }
 
     const nextTrack = state.queue[nextIndex];
-    console.log("[handleNext] Playing next:", nextIndex, nextTrack.title);
+    logger.debug(`[handleNext] Playing next: ${nextIndex} ${nextTrack.title}`);
 
     set({
       currentTrack: nextTrack,
@@ -165,13 +190,16 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     currentIndex: -1,
     shuffle: false,
     repeat: "off",
-    isQueueOpen: false,
+
+    sidePanel: "none",
     position: 0,
+
     duration: 0,
     _previousVolume: 1.0,
     _isDraggingSlider: false,
     _listenersInitialized: false,
     _lastProgressUpdate: 0,
+    _lastSeekTime: 0,
     _isTransitioning: false,
 
     // Player Actions
@@ -186,6 +214,14 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         queue = [track];
         index = 0;
       }
+
+      // Record stats for previous track if we are switching contexts
+      const currentState = get();
+      checkAndRecordStats(
+        currentState.currentTrack,
+        currentState.duration,
+        currentState.position,
+      );
 
       set({
         currentTrack: track,
@@ -238,7 +274,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     },
 
     seek: async (positionMs) => {
-      set({ position: positionMs });
+      set({ position: positionMs, _lastSeekTime: Date.now() });
       await invoke("audio_seek", { positionMs });
     },
 
@@ -267,7 +303,11 @@ export const useAudioStore = create<AudioStore>((set, get) => {
     },
 
     // Queue Actions
-    toggleQueue: () => set((s) => ({ isQueueOpen: !s.isQueueOpen })),
+    toggleQueue: () =>
+      set((s) => ({
+        sidePanel: s.sidePanel === "queue" ? "none" : "queue",
+      })),
+    setSidePanel: (view) => set({ sidePanel: view }),
     toggleShuffle: () => set((s) => ({ shuffle: !s.shuffle })),
     toggleRepeat: () =>
       set((s) => ({
@@ -375,10 +415,16 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           const newStatus: PlaybackStatus = s.is_playing
             ? "playing"
             : s.is_paused
-            ? "paused"
-            : "stopped";
+              ? "paused"
+              : "stopped";
 
           set((state) => {
+            // Ignore 'stopped' from backend when we're in 'loading' state
+            // This prevents flicker when starting playback
+            if (state.status === "loading" && newStatus === "stopped") {
+              return state; // Don't override loading with stopped
+            }
+
             if (state.status === newStatus && state.volume === s.volume) {
               return state; // No change
             }
@@ -388,7 +434,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
               duration: s.duration_ms,
             };
           });
-        }
+        },
       );
 
       const unlistenProgress = listen<AudioPlaybackProgressPayload>(
@@ -401,6 +447,9 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           const now = Date.now();
           if (now - state._lastProgressUpdate < 500) return;
 
+          // Ignore updates shortly after seeking to prevent jumping back
+          if (now - state._lastSeekTime < 1000) return;
+
           const s = event.payload;
           set({
             position: s.position_ms,
@@ -412,7 +461,10 @@ export const useAudioStore = create<AudioStore>((set, get) => {
           const crossfadeMs =
             useSettingsStore.getState().crossfadeDuration || 0;
           if (crossfadeMs > 0 && s.duration_ms > 0) {
-            const threshold = s.duration_ms - crossfadeMs;
+            // Small buffer to compensate for IPC latency between frontend trigger
+            // and backend receiving the play command
+            const IPC_BUFFER_MS = 100;
+            const threshold = s.duration_ms - crossfadeMs - IPC_BUFFER_MS;
 
             // Check if we reached the transition point
             // Also ensure we aren't already transitioning
@@ -423,10 +475,10 @@ export const useAudioStore = create<AudioStore>((set, get) => {
                 (state.repeat !== "off" ||
                   state.currentIndex < state.queue.length - 1);
               if (hasNext) {
-                console.log(
+                logger.debug(
                   "Triggering automatic crossfade",
                   s.position_ms,
-                  threshold
+                  threshold,
                 );
                 set({ _isTransitioning: true });
                 get().next();
@@ -438,7 +490,7 @@ export const useAudioStore = create<AudioStore>((set, get) => {
               set({ _isTransitioning: false });
             }
           }
-        }
+        },
       );
 
       const unlistenFinished = listen("audio-playback-finished", () => {
@@ -472,33 +524,102 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         get().stop();
       });
 
+      // Media key rate limiting: ignore rapid duplicate events within 200ms
+      let lastSeekTime = 0;
+      let lastSeekByTime = 0;
+      let lastSetPosTime = 0;
+      let lastSetVolTime = 0;
+
+      const unlistenMediaSeek = listen<{ direction: string }>("media-seek", (event) => {
+        const now = Date.now();
+        if (now - lastSeekTime < 200) return;
+        lastSeekTime = now;
+        const dir = event.payload.direction;
+        const seekMs = 10000; // 10s default
+        const state = get();
+        const newPos = dir === "forward"
+          ? state.position + seekMs
+          : Math.max(0, state.position - seekMs);
+        state.seek(newPos);
+      });
+
+      const unlistenMediaSeekBy = listen<{ direction: string; duration_ms: number }>("media-seek-by", (event) => {
+        const now = Date.now();
+        if (now - lastSeekByTime < 200) return;
+        lastSeekByTime = now;
+        const { direction: dir, duration_ms: ms } = event.payload;
+        const state = get();
+        const newPos = dir === "forward"
+          ? state.position + ms
+          : Math.max(0, state.position - ms);
+        state.seek(newPos);
+      });
+
+      const unlistenMediaSetPos = listen<{ position_ms: number }>("media-set-position", (event) => {
+        const now = Date.now();
+        if (now - lastSetPosTime < 200) return;
+        lastSetPosTime = now;
+        get().seek(event.payload.position_ms);
+      });
+
+      const unlistenMediaSetVol = listen<{ volume: number }>("media-set-volume", (event) => {
+        const now = Date.now();
+        if (now - lastSetVolTime < 200) return;
+        lastSetVolTime = now;
+        get().setVolume(event.payload.volume);
+      });
+
+      const unlistenMediaRaise = listen("media-raise", () => {
+        // Raise is handled in Rust (shows main window)
+      });
+
+      const unlistenMediaQuit = listen("media-quit", () => {
+        logger.info("Media quit requested");
+        get().stop();
+        invoke("audio_stop");
+      });
+
       const unlistenError = listen<string>(
         "audio-playback-error",
         async (event) => {
-          console.error("Playback Error:", event.payload);
+          logger.error("Playback Error", event.payload);
           const state = get();
           const track = state.currentTrack;
 
           if (track) {
-            // Try to auto-delete first
-            try {
-              await invoke("delete_track", { trackId: track.id });
-              useLibraryStore.getState().fetchLibrary();
+            const errorMsg = event.payload.toLowerCase();
+            const isFileMissing =
+              errorMsg.includes("no such file") ||
+              errorMsg.includes("file not found") ||
+              errorMsg.includes("cannot open") ||
+              errorMsg.includes("failed to probe");
 
-              toast("File not found", {
-                description: `Removed "${track.title}" from library.`,
-              });
-            } catch (e) {
-              console.error("Failed to self-heal library:", e);
-              toast.error(`File missing: ${track.title}`, {
-                description: "Run 'Prune Library' in settings to clean up.",
+            if (isFileMissing) {
+              // File is genuinely missing - safe to auto-delete
+              try {
+                await invoke("delete_track", { trackId: track.id });
+                useLibraryStore.getState().fetchLibrary();
+
+                toast("File not found", {
+                  description: `Removed "${track.title}" from library.`,
+                });
+              } catch (e) {
+                logger.error("Failed to self-heal library", e);
+                toast.error(`File missing: ${track.title}`, {
+                  description: "Run 'Prune Library' in settings to clean up.",
+                });
+              }
+            } else {
+              // Other error (decoding issue, etc.) - don't delete, just notify
+              toast.error(`Playback error: ${track.title}`, {
+                description: "Skipping to next track.",
               });
             }
 
-            // Stop or Next?
+            // Skip to next track
             get().next();
           }
-        }
+        },
       );
 
       return () => {
@@ -513,6 +634,12 @@ export const useAudioStore = create<AudioStore>((set, get) => {
         unlistenMediaNext.then((f) => f());
         unlistenMediaPrev.then((f) => f());
         unlistenMediaStop.then((f) => f());
+        unlistenMediaSeek.then((f) => f());
+        unlistenMediaSeekBy.then((f) => f());
+        unlistenMediaSetPos.then((f) => f());
+        unlistenMediaSetVol.then((f) => f());
+        unlistenMediaRaise.then((f) => f());
+        unlistenMediaQuit.then((f) => f());
 
         set({ _listenersInitialized: false });
       };
@@ -525,27 +652,15 @@ export const usePlayerStatus = () => useAudioStore((s) => s.status);
 export const useCurrentTrack = () => useAudioStore((s) => s.currentTrack);
 export const useVolume = () => useAudioStore((s) => s.volume);
 export const useQueue = () => useAudioStore((s) => s.queue);
-export const useQueueOpen = () => useAudioStore((s) => s.isQueueOpen);
+export const useSidePanel = () => useAudioStore((s) => s.sidePanel);
 export const useRepeat = () => useAudioStore((s) => s.repeat);
 export const useShuffle = () => useAudioStore((s) => s.shuffle);
 export const usePosition = () => useAudioStore((s) => s.position);
 export const useDuration = () => useAudioStore((s) => s.duration);
 
-// Actions (static getters - never cause re-renders)
-export const getPlayerActions = () => {
-  const s = useAudioStore.getState();
-  return {
-    play: s.play,
-    pause: s.pause,
-    resume: s.resume,
-    stop: s.stop,
-    next: s.next,
-    previous: s.previous,
-    seek: s.seek,
-    setVolume: s.setVolume,
-    toggleMute: s.toggleMute,
-  };
-};
+// Derived selector for player visibility (used for dynamic bottom padding)
+export const useIsPlayerVisible = () =>
+  useAudioStore((s) => !!s.currentTrack && s.status !== "stopped");
 
 export const getQueueActions = () => {
   const s = useAudioStore.getState();
@@ -555,15 +670,9 @@ export const getQueueActions = () => {
     removeFromQueue: s.removeFromQueue,
     reorderQueue: s.reorderQueue,
     toggleQueue: s.toggleQueue,
+    setSidePanel: s.setSidePanel,
     toggleShuffle: s.toggleShuffle,
     toggleRepeat: s.toggleRepeat,
-  };
-};
-
-export const getProgressActions = () => {
-  const s = useAudioStore.getState();
-  return {
-    setPosition: s.setPosition,
-    setDraggingSlider: s.setDraggingSlider,
+    clearQueue: s.clearQueue,
   };
 };

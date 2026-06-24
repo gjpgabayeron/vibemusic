@@ -2,11 +2,28 @@ import { create } from "zustand";
 import { load, Store } from "@tauri-apps/plugin-store";
 import { v4 as uuidv4 } from "uuid";
 import { invoke } from "@tauri-apps/api/core";
+import { useLibraryStore } from "./library-store";
+import { logger } from "@/lib/logger";
+
+const TAILWIND_CLASS_TO_HEX: Record<string, string> = {
+  "bg-red-500": "#ef4444",
+  "bg-blue-500": "#3b82f6",
+  "bg-green-500": "#22c55e",
+  "bg-yellow-500": "#eab308",
+  "bg-purple-500": "#a855f7",
+  "bg-pink-500": "#ec4899",
+  "bg-indigo-500": "#6366f1",
+  "bg-cyan-500": "#06b6d4",
+};
+
+function migrateColor(color: string): string {
+  return TAILWIND_CLASS_TO_HEX[color] || color;
+}
 
 export interface Profile {
   id: string;
   name: string;
-  color: string; // Hex or tailwind class info
+  color: string; // Hex color (e.g. "#3b82f6")
   avatarPath?: string;
 }
 
@@ -41,6 +58,9 @@ const getStore = async () => {
   return storePromise;
 };
 
+/**
+ * Store for managing user profiles (settings, avatars, active profile).
+ */
 export const useProfileStore = create<ProfileState>((set, get) => ({
   profiles: [],
   activeProfileId: null,
@@ -49,34 +69,52 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   loadProfiles: async () => {
     try {
       const store = await getStore();
-      const profiles = (await store.get<Profile[]>("profiles")) || [];
+      const profiles = ((await store.get<Profile[]>("profiles")) || []).map(
+        (p) => ({ ...p, color: migrateColor(p.color) })
+      );
       const activeProfileId = await store.get<string>("activeProfileId");
-
-      set({ profiles, activeProfileId, isLoading: false });
 
       if (profiles.length === 0) {
         // Auto-create default profile
         const defaultProfile: Profile = {
           id: uuidv4(),
           name: "Default",
-          color: "bg-blue-500",
+          color: "#3b82f6",
         };
         const newProfiles = [defaultProfile];
 
-        await store.set("profiles", newProfiles);
-        await store.set("activeProfileId", defaultProfile.id);
+        await Promise.all([
+          store.set("profiles", newProfiles),
+          store.set("activeProfileId", defaultProfile.id),
+        ]);
         await store.save();
 
-        set({ profiles: newProfiles, activeProfileId: defaultProfile.id });
+        // Notify backend FIRST
         await invoke("set_active_profile", { profileId: defaultProfile.id });
-      } else if (activeProfileId) {
-        await invoke("set_active_profile", { profileId: activeProfileId });
+        set({
+          profiles: newProfiles,
+          activeProfileId: defaultProfile.id,
+          isLoading: false,
+        });
+      } else {
+        // Notify backend FIRST if we have an ID
+        if (activeProfileId) {
+          await invoke("set_active_profile", { profileId: activeProfileId });
+        }
+        set({ profiles, activeProfileId, isLoading: false });
+
+        // Fetch library for the active profile on app startup
+        if (activeProfileId) {
+          await useLibraryStore.getState().fetchLibrary();
+        }
       }
     } catch (e) {
-      console.error("Failed to load profiles:", e);
+      logger.error("Failed to load profiles", e);
       set({ isLoading: false });
     }
   },
+
+  // ... (create/update/delete unchanged)
 
   createProfile: async (name, color, avatarPath, avatarBytes) => {
     const id = uuidv4();
@@ -89,7 +127,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
           imageData: Array.from(avatarBytes),
         });
       } catch (e) {
-        console.error("Failed to save avatar bytes", e);
+        logger.error("Failed to save avatar bytes", e);
       }
     } else if (avatarPath) {
       try {
@@ -98,7 +136,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
           filePath: avatarPath,
         });
       } catch (e) {
-        console.error("Failed to upload avatar", e);
+        logger.error("Failed to upload avatar", e);
       }
     }
 
@@ -133,7 +171,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         });
         finalUpdates.avatarPath = savedPath;
       } catch (e) {
-        console.error("Failed to save avatar bytes", e);
+        logger.error("Failed to save avatar bytes", e);
       }
     } else if (updates.avatarPath) {
       try {
@@ -143,7 +181,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         });
         finalUpdates.avatarPath = savedPath;
       } catch (e) {
-        console.error("Failed to upload avatar", e);
+        logger.error("Failed to upload avatar", e);
         // Keep original path if failure? Or fail?
         // For now catch and log, maybe keep temp path which might work if local?
         // No, if upload fails, better to not save invalid path.
@@ -184,12 +222,21 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   },
 
   selectProfile: async (id) => {
+    // 0. Reset UI State to prevent ghost data
+    // Use true to show skeletons immediately, preventing "Empty State" flash
+    useLibraryStore.getState().resetLibrary(true);
+
+    // 1. Notify backend FIRST
+    await invoke("set_active_profile", { profileId: id });
+
     set({ activeProfileId: id });
     const store = await getStore();
     await store.set("activeProfileId", id);
     await store.save();
 
-    // Notify backend
-    await invoke("set_active_profile", { profileId: id });
+    // Reload library data for the new profile
+    if (id) {
+      await useLibraryStore.getState().fetchLibrary();
+    }
   },
 }));
