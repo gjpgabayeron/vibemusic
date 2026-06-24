@@ -125,6 +125,15 @@ jobs:
           merge-multiple: true
           path: artifacts
 
+      - name: Normalize filenames for GitHub API
+        shell: pwsh
+        run: |
+          Get-ChildItem artifacts -Recurse -File | Where-Object { $_.Name -match ' ' } | ForEach-Object {
+            $newName = $_.Name -replace ' ', '.'
+            Write-Host "$($_.Name) -> $newName"
+            Rename-Item -Path $_.FullName -NewName $newName
+          }
+
       - name: Upload artifacts to release
         shell: pwsh
         env:
@@ -132,7 +141,7 @@ jobs:
         run: |
           $tag = "${{ github.event.release.tag_name }}"
           Get-ChildItem -Path artifacts -Recurse -File | Where-Object {
-            $_.Name -match '^Vibe Music[_-]' -or $_.Name -match '^Vibe Music\.app' -or $_.Name -eq 'latest.json'
+            $_.Name -match '^Vibe\.Music[_-]' -or $_.Name -eq 'latest.json'
           } | ForEach-Object {
             Write-Host "Uploading: $($_.Name)"
             gh release upload $tag "$($_.FullName)" --clobber
@@ -168,7 +177,7 @@ jobs:
 
           $platforms = @{}
           Get-ChildItem -Path artifacts -Recurse -File | Where-Object {
-            $_.Name -match '^Vibe Music[_-]' -or $_.Name -match '^Vibe Music\.app'
+            $_.Name -match '^Vibe\.Music[_-]'
           } | ForEach-Object {
             $filename = $_.Name
             foreach ($key in $patterns.Keys) {
