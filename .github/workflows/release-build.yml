@@ -205,7 +205,24 @@ jobs:
             $shaBlock += "$sha  $filename`n"
           }
 
-          $body = "## What's Changed`n`n$changelog`n`n## Downloads`n`n| OS | File | SHA256 |`n|---|---|---|`n$($rows -join \"`n\")`n`n### SHA256 Checksums`n`````n$shaBlock`````"
+          $nl = [Environment]::NewLine
+          $bodyLines = @(
+            "## What's Changed",
+            "",
+            $changelog,
+            "",
+            "## Downloads",
+            "",
+            "| OS | File | SHA256 |",
+            "|---|---|---|"
+          )
+          foreach ($r in $rows) { $bodyLines += $r }
+          $bodyLines += ""
+          $bodyLines += "### SHA256 Checksums"
+          $bodyLines += "```"
+          $bodyLines += $shaBlock.Trim()
+          $bodyLines += "```"
+          $body = $bodyLines -join $nl
           $bodyPath = Join-Path artifacts "body.md"
           Set-Content $bodyPath $body
           gh release edit $tag --notes-file $bodyPath

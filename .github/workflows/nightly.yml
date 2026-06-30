@@ -305,19 +305,30 @@ jobs:
             $shaBlock += "$sha  $filename`n"
           }
 
-          $table = "## Downloads`n`n| OS | File | SHA256 |`n|---|---|---|`n$($rows -join \"`n\")`n`n### SHA256 Checksums`n`````n$shaBlock`````"
           $changelog = Get-Content artifacts/changelog.md -Raw
 
-          $body = @"
-          🌙 **Nightly Build** - Version $version
-
-          > ⚠️ This is a rolling nightly release with the latest changes from the dev branch. Nightly builds may be unstable. For stable releases, switch to the stable update channel.
-
-          ### Changelog
-          $changelog
-
-          $table
-          "@
+          $nl = [Environment]::NewLine
+          $bodyLines = @(
+            "🌙 **Nightly Build** - Version $version",
+            "",
+            "> ⚠️ This is a rolling nightly release with the latest changes from the dev branch. Nightly builds may be unstable. For stable releases, switch to the stable update channel.",
+            "",
+            "### Changelog",
+            "",
+            $changelog,
+            "",
+            "## Downloads",
+            "",
+            "| OS | File | SHA256 |",
+            "|---|---|---|"
+          )
+          foreach ($r in $rows) { $bodyLines += $r }
+          $bodyLines += ""
+          $bodyLines += "### SHA256 Checksums"
+          $bodyLines += "```"
+          $bodyLines += $shaBlock.Trim()
+          $bodyLines += "```"
+          $body = $bodyLines -join $nl
 
           Set-Content body.md $body
           gh release edit nightly --title "Vibe Music $version-nightly" --notes-file body.md
