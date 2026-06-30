@@ -219,9 +219,9 @@ jobs:
           foreach ($r in $rows) { $bodyLines += $r }
           $bodyLines += ""
           $bodyLines += "### SHA256 Checksums"
-          $bodyLines += "```"
+          $bodyLines += '```'
           $bodyLines += $shaBlock.Trim()
-          $bodyLines += "```"
+          $bodyLines += '```'
           $body = $bodyLines -join $nl
           $bodyPath = Join-Path artifacts "body.md"
           Set-Content $bodyPath $body
