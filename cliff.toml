@@ -11,18 +11,20 @@ body = """
 {% else %}\
     ## [Unreleased]
 {% endif %}\
-{% for group, commits in commits | group_by(attribute="group") %}
-    ### {{ group | striptags | trim | upper_first }}
-    {% for commit in commits %}
+{% set groups = commits | group_by(attribute="group") %}
+{% set order = ["✨ Features", "🐛 Bug Fixes", "⚡ Performance", "♻️ Refactoring", "📚 Documentation", "🎨 Styling", "🧪 Testing", "🔒 Security", "🔧 Miscellaneous"] %}
+{% for group_name in order %}
+{% if groups[group_name] %}
+    ### {{ group_name }}
+    {% for commit in groups[group_name] %}
         - {% if commit.scope %}**{{ commit.scope }}**: {% endif %}\
             {{ commit.message | upper_first }}\
             {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
     {% endfor %}
+{% endif %}
 {% endfor %}
 """
 footer = """
----
-*Generated with [git-cliff](https://git-cliff.org)*
 """
 trim = true
 
